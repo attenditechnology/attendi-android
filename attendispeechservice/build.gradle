@@ -1,0 +1,97 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.serialization'
+    id 'maven-publish'
+}
+
+android {
+    compileSdk 33
+
+    defaultConfig {
+        minSdk 26
+        //noinspection OldTargetApi 33 is the latest version
+        targetSdk 33
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = compose_version
+    }
+    namespace 'nl.attendi.attendispeechservice'
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation "androidx.compose.ui:ui:1.4.3"
+    implementation "androidx.compose.material3:material3:1.1.1"
+    implementation "androidx.compose.ui:ui-tooling-preview:1.4.3"
+    implementation 'androidx.activity:activity-compose:1.7.2'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.4.3"
+    debugImplementation "androidx.compose.ui:ui-tooling:1.4.3"
+    implementation "androidx.compose.material:material-icons-extended:1.4.3"
+
+
+    // Permissions for Jetpack Compose
+    implementation "com.google.accompanist:accompanist-permissions:0.20.3"
+    // Using later versions result in an error in which the wrong kotlin-stdlib-common version is used
+    // when building
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1'
+
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
+}
+
+
+afterEvaluate {
+        publishing {
+            publications {
+                release(MavenPublication) {
+
+                    groupId = 'nl.attendi'
+                    artifactId = 'attendispeechservice'
+                    version = '0.1.0'
+
+                    from components.release
+
+                }
+            }
+        repositories {
+            maven {
+                name = "GitHubPackages"
+
+                url = uri("https://maven.pkg.github.com/attenditechnology/attendi-android")
+
+                credentials {
+                    username = System.getenv("USERNAME_GITHUB")
+                    password = System.getenv("TOKEN_GITHUB")
+                }
+            }
+        }
+    }
+}
