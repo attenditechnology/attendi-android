@@ -84,7 +84,6 @@ import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.Atte
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AudioNotificationPlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.VolumeFeedbackPlugin
 import java.util.*
-import kotlin.math.sqrt
 
 enum class MicrophoneUIState {
     NotStartedRecording, LoadingBeforeRecording, Recording, Processing
@@ -135,6 +134,11 @@ val LocalMicrophoneState =
  * this attribute to `true`.
  * @param showOptions Currently not used. If set to `true`, the component will expand to show an options button.
  * When clicked, an options menu is shown in a bottom sheet.
+ * @param onState Use this callback to access the [AttendiMicrophoneState] of the microphone. This
+ * can be used to access the microphone's state, such as the current UI state, or to register
+ * callbacks that are called when the microphone's state changes. This is an alternative to
+ * using the [AttendiMicrophonePlugin] interface, allowing simpler access to the microphone's
+ * plugin interface.
  * @param onEvent This callback allows plugins to send arbitrary events to the [AttendiMicrophone]'s
  * caller. This can be useful when the result is not just a string, but an arbitrary
  * data structure. The caller can branch on the event name to handle the event(s) it
@@ -152,6 +156,7 @@ fun AttendiMicrophone(
     plugins: List<AttendiMicrophonePlugin> = listOf(),
     silent: Boolean = false,
     showOptions: Boolean = false,
+    onState: (state: AttendiMicrophoneState) -> Unit = {_ -> },
     onEvent: (name: String, Any) -> Unit = { _, _ -> },
     onResult: (String) -> Unit = { },
 ) {
@@ -223,11 +228,14 @@ fun AttendiMicrophone(
     )
     val allPlugins = defaultPlugins + plugins
 
-    // Activate plugins on first render
+    // On first render
     LaunchedEffect(Unit) {
         allPlugins.forEach { plugin ->
             plugin.activate(microphoneState)
         }
+
+        // Give callers access to the microphone state
+        onState(microphoneState)
     }
 
     // Deactivate plugins when the microphone leaves the composition

@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import nl.attendi.attendispeechservice.client.ModelType
 import nl.attendi.attendispeechservice.client.TranscribeAPIConfig
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
+import nl.attendi.attendispeechservice.components.attendimicrophone.MicrophoneUIState
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiTranscribePlugin
 import nl.attendi.attendispeechserviceexample.ui.theme.AttendiSpeechServiceExampleTheme
@@ -114,6 +115,17 @@ fun ExampleApp() {
     }
 }
 
+/**
+ * A modifier that applies [modifier] if [condition] is true.
+ */
+fun Modifier.conditional(condition: Boolean, modifier: Modifier.() -> Modifier): Modifier {
+    return if (condition) {
+        then(modifier(Modifier))
+    } else {
+        this
+    }
+}
+
 @Composable
 fun HoveringMicrophoneScreen() {
     var text1 by remember { mutableStateOf("") }
@@ -126,7 +138,20 @@ fun HoveringMicrophoneScreen() {
     val focusRequester3 = remember { FocusRequester() }
     val focusRequester4 = remember { FocusRequester() }
 
+    // var microphoneState by remember { mutableStateOf<AttendiMicrophoneState?>(null) }
+    var microphoneUIState by remember { mutableStateOf<MicrophoneUIState?>(null) }
+
     var focusedTextField by remember { mutableStateOf(0) }
+    val targetTextField = if (focusedTextField == 0) 1 else focusedTextField
+
+    fun shouldDisplayMicrophoneTarget(textField: Int) =
+        ((microphoneUIState == MicrophoneUIState.Recording || microphoneUIState == MicrophoneUIState.Processing)
+                && targetTextField == textField)
+
+    fun displayMicrophoneTarget(textField: Int) =
+        Modifier.conditional(shouldDisplayMicrophoneTarget(textField)) {
+            border(1.dp, Color.Red)
+        }
 
     Box {
         Column(
@@ -138,57 +163,73 @@ fun HoveringMicrophoneScreen() {
         ) {
             Text("SOAP rapportage")
 
-            Text("S:")
-            TextField(
-                value = text1,
-                onValueChange = { text1 = it },
-                minLines = 5,
-                modifier = Modifier
-                    .focusRequester(focusRequester1)
-                    .onFocusChanged { if (it.isFocused) focusedTextField = 1 }
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .padding(0.dp),
-            )
+            Column {
+                Text("S:")
+                TextField(
+                    value = text1,
+                    onValueChange = { text1 = it },
+                    minLines = 5,
+                    modifier = Modifier
+                        .focusRequester(focusRequester1)
+                        .onFocusChanged { if (it.isFocused) focusedTextField = 1 }
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .padding(0.dp)
+                        .then(displayMicrophoneTarget(1))
+                )
+                if (shouldDisplayMicrophoneTarget(1)) Text("Aan het opnemen..", color = Color.Red)
+            }
 
-            Text("O:")
-            TextField(
-                value = text2,
-                onValueChange = { text2 = it },
-                minLines = 5,
-                modifier = Modifier
-                    .focusRequester(focusRequester2)
-                    .onFocusChanged { if (it.isFocused) focusedTextField = 2 }
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .padding(0.dp),
-            )
+            Column {
+                Text("O:")
+                TextField(
+                    value = text2,
+                    onValueChange = { text2 = it },
+                    minLines = 5,
+                    modifier = Modifier
+                        .focusRequester(focusRequester2)
+                        .onFocusChanged { if (it.isFocused) focusedTextField = 2 }
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .padding(0.dp)
+                        .then(displayMicrophoneTarget(2)),
+                )
+                if (shouldDisplayMicrophoneTarget(2)) Text("Aan het opnemen..", color = Color.Red)
+            }
 
-            Text("A:")
-            TextField(
-                value = text3,
-                onValueChange = { text3 = it },
-                minLines = 5,
-                modifier = Modifier
-                    .focusRequester(focusRequester3)
-                    .onFocusChanged { if (it.isFocused) focusedTextField = 3 }
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .padding(0.dp),
-            )
+            Column {
+                Text("A:")
+                TextField(
+                    value = text3,
+                    onValueChange = { text3 = it },
+                    minLines = 5,
+                    modifier = Modifier
+                        .focusRequester(focusRequester3)
+                        .onFocusChanged { if (it.isFocused) focusedTextField = 3 }
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .padding(0.dp)
+                        .then(displayMicrophoneTarget(3)),
+                )
+                if (shouldDisplayMicrophoneTarget(3)) Text("Aan het opnemen..", color = Color.Red)
+            }
 
-            Text("P:")
-            TextField(
-                value = text4,
-                onValueChange = { text4 = it },
-                minLines = 5,
-                modifier = Modifier
-                    .focusRequester(focusRequester4)
-                    .onFocusChanged { if (it.isFocused) focusedTextField = 4 }
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .padding(0.dp),
-            )
+            Column {
+                Text("P:")
+                TextField(
+                    value = text4,
+                    onValueChange = { text4 = it },
+                    minLines = 5,
+                    modifier = Modifier
+                        .focusRequester(focusRequester4)
+                        .onFocusChanged { if (it.isFocused) focusedTextField = 4 }
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .padding(0.dp)
+                        .then(displayMicrophoneTarget(4)),
+                )
+                if (shouldDisplayMicrophoneTarget(4)) Text("Aan het opnemen..", color = Color.Red)
+            }
         }
 
         val pinkColor = Color(240, 43, 131)
@@ -207,6 +248,11 @@ fun HoveringMicrophoneScreen() {
                     AttendiErrorPlugin(),
                     AttendiTranscribePlugin(apiConfig = exampleAPIConfig),
                 ),
+                onState = { state ->
+                    state.onUIState {
+                        microphoneUIState = it
+                    }
+                },
                 onResult = {
                     when (focusedTextField) {
                         1 -> text1 = addParagraph(text1, it)
