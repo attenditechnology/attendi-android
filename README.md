@@ -10,7 +10,7 @@ The `AttendiClient` class provides an interface to easily communicate with the A
 
 The SDK is available as a Kotlin Android library package.
 
-**Installation instructions**
+### Installation instructions
 
 You can install the package by either downloading it directly from the package page on GitHub Packages, by updating your app's build.gradle file:
 
@@ -18,7 +18,7 @@ You can install the package by either downloading it directly from the package p
 implementation 'nl.attendi:attendispeechservice:<version>'
 ```
 
-or you can update the pom.xml file by adding the following repository and dependency:
+or you can update the `pom.xml` file by adding the following repository and dependency:
 
 ```
 <repository>
@@ -34,12 +34,32 @@ or you can update the pom.xml file by adding the following repository and depend
 </dependency>
 ```
 
-Jetpack Compose is used for building this package. To handle permissions in Jetpack Compose, we need to install the Accompanist library. This library provides Android runtime permissions support for Jetpack Compose. Add the following dependency to your app-level build.gradle file:
+The package is not hosted on a public Maven repository yet, so you will need to authenticate with Attendi's private GitHub Packages repository.
+First, create a personal access token with the `read:packages` scope. [This link](https://github.com/settings/tokens/new) should take you to the right page.
+Then, add the following to your project's `settings.gradle` file:
 
-``` kotlin
-implementation 'com.google.accompanist:accompanist-permissions:0.20.3'
+```
+// This block should already exist
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // Add this part
+        maven(
+            "https://maven.pkg.github.com/attenditechnology/attendi-android") {
+            credentials {
+                // Your GitHub username
+                username = ""
+                // Use the personal access token you created earlier as the password
+                password = ""
+            }
+        }
+    }
+}
 ```
 
+## Usage
 
 After installing the package, you can use the microphone component in your project:
 
