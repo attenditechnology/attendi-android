@@ -84,7 +84,6 @@ import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.Atte
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AudioNotificationPlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.VolumeFeedbackPlugin
 import java.util.*
-import kotlin.math.sqrt
 
 enum class MicrophoneUIState {
     NotStartedRecording, LoadingBeforeRecording, Recording, Processing
@@ -153,6 +152,7 @@ fun AttendiMicrophone(
     silent: Boolean = false,
     showOptions: Boolean = false,
     onEvent: (name: String, Any) -> Unit = { _, _ -> },
+    onState: (state: AttendiMicrophoneState) -> Unit = {_ -> },
     onResult: (String) -> Unit = { },
 ) {
     val context = LocalContext.current
@@ -223,11 +223,14 @@ fun AttendiMicrophone(
     )
     val allPlugins = defaultPlugins + plugins
 
-    // Activate plugins on first render
+    // On first render
     LaunchedEffect(Unit) {
         allPlugins.forEach { plugin ->
             plugin.activate(microphoneState)
         }
+
+        // Give callers access to the microphone state
+        onState(microphoneState)
     }
 
     // Deactivate plugins when the microphone leaves the composition

@@ -423,7 +423,6 @@ fun LinearReportingMethodView(
                         ),
                         onResult = { viewModel.setCurrentStepText(it) },
                     )
-
                 }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     IconButton(
