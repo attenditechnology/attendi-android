@@ -26,7 +26,7 @@ or you can update the `pom.xml` file by adding the following repository and depe
   <name>GitHub Attendi Technology Apache Maven Packages</name>
   <url>https://maven.pkg.github.com/attenditechnology/attendi-android</url>
 </repository>
- 
+
 <dependency>
   <groupId>nl.attendi</groupId>
   <artifactId>attendispeechservice</artifactId>
@@ -83,6 +83,14 @@ AttendiMicrophone(
         AttendiErrorPlugin(),
         AttendiTranscribePlugin(apiConfig = exampleAPIConfig),
     ),
+    // Use `onState` to access the microphone's state that exposes its plugin APIs and other
+    // useful information. In this case, we use it to listen to the microphone's UI state, which
+    // we can use to show some UI conditional on this state.
+    onState = { state ->
+        state.onUIState {
+            print(it)
+        }
+    },
     // Use `onEvent` to listen to arbitrary events
     onEvent = { name, data ->
         when (name) {
