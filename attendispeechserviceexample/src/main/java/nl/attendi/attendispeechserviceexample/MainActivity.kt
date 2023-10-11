@@ -14,6 +14,7 @@
 
 package nl.attendi.attendispeechserviceexample
 
+import AttendiMicrophoneDefaults
 import MicrophoneModifier
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -243,7 +244,13 @@ fun HoveringMicrophoneScreen() {
                 modifier = Modifier
                     .border(1.dp, pinkColor, RoundedCornerShape(percent = 50))
                     .background(Color.White),
-                microphoneModifier = MicrophoneModifier(size = 64.dp, color = pinkColor),
+                microphoneModifier = MicrophoneModifier(size = 64.dp),
+                colors = AttendiMicrophoneDefaults.colors(
+                    inactiveBackgroundColor = pinkColor,
+                    inactiveForegroundColor = Color.White,
+                    activeBackgroundColor = pinkColor,
+                    activeForegroundColor = Color.White,
+                ),
                 plugins = listOf(
                     AttendiErrorPlugin(),
                     AttendiTranscribePlugin(apiConfig = exampleAPIConfig),

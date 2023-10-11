@@ -14,10 +14,11 @@
 
 package nl.attendi.attendispeechservice.components.attendimicrophone
 
+import AttendiMicrophoneColors
+import AttendiMicrophoneDefaults
 import MicrophoneModifier
 import MicrophoneOptionsVariant
 import MicrophoneSettings
-import MicrophoneVariant
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -154,6 +155,7 @@ val LocalMicrophoneState =
 fun AttendiMicrophone(
     modifier: Modifier = Modifier,
     microphoneModifier: MicrophoneModifier = MicrophoneModifier(),
+    colors: AttendiMicrophoneColors = AttendiMicrophoneDefaults.colors(),
     plugins: List<AttendiMicrophonePlugin> = listOf(),
     silent: Boolean = false,
     showOptions: Boolean = false,
@@ -163,7 +165,9 @@ fun AttendiMicrophone(
 ) {
     val context = LocalContext.current
 
-    val settings = MicrophoneSettings()
+    val settings = MicrophoneSettings(
+        colors = colors,
+    )
 
     // TODO: implement showOptions properly
     // if (showOptions) {
@@ -174,7 +178,6 @@ fun AttendiMicrophone(
     }
 
     microphoneModifier.size?.let { settings.size = it }
-    microphoneModifier.color?.let { settings.color = it }
     microphoneModifier.cornerRadius?.let { settings.cornerRadius = it }
 
     // Bottom sheet
@@ -194,9 +197,9 @@ fun AttendiMicrophone(
     val recorder by remember { mutableStateOf(AttendiRecorder()) }
 
     // Used to launch activities, such as going to the settings to grant the microphone permission.
-    val launcher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult(),
-            onResult = {})
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+        onResult = {})
 
     // Used so that we don't call some LaunchEffect functions on first render. Only when an
     // observed state variable's value actually changes.
@@ -273,9 +276,7 @@ fun AttendiMicrophone(
     OnLifecycleEvent { _, event ->
         when (event) {
             Lifecycle.Event.ON_RESUME -> {
-                if (recordingInterruptedByBackgrounding &&
-                    recorder.state != AttendiRecorder.RecordingState.Recording
-                ) {
+                if (recordingInterruptedByBackgrounding && recorder.state != AttendiRecorder.RecordingState.Recording) {
                     recordingInterruptedByBackgrounding = false
                     coroutineScope.launch {
                         recorder.startRecording()
@@ -833,20 +834,23 @@ fun AttendiMicrophoneView(
 fun NotStartedRecordingView() {
     val settings = LocalMicrophoneState.current.settings
 
-    val foregroundColor = when (settings.variant) {
-        MicrophoneVariant.WHITE -> Color.White
-        MicrophoneVariant.DEFAULT -> settings.color
-        MicrophoneVariant.TRANSPARENT -> settings.color
-    }
+    val foregroundColor = settings.colors.inactiveForegroundColor
 
-    Icon(
-        imageVector = ImageVector.vectorResource(id = R.drawable.microphone),
-        contentDescription = "Microphone icon",
+    Box(
         modifier = Modifier
-            .fillMaxSize(0.5f)
-            .aspectRatio(1f),
-        tint = foregroundColor
-    )
+            .fillMaxSize()
+            .background(settings.colors.inactiveBackgroundColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = ImageVector.vectorResource(id = R.drawable.microphone),
+            contentDescription = "Microphone icon",
+            modifier = Modifier
+                .fillMaxSize(0.5f)
+                .aspectRatio(1f),
+            tint = foregroundColor
+        )
+    }
 }
 
 @Preview
@@ -863,16 +867,8 @@ fun NotStartedRecordingViewPreview() {
 fun LoadingBeforeRecordingView() {
     val settings = LocalMicrophoneState.current.settings
 
-    val backgroundColor = when (settings.variant) {
-        MicrophoneVariant.WHITE, MicrophoneVariant.TRANSPARENT -> Color.Transparent
-        MicrophoneVariant.DEFAULT -> settings.color
-    }
-
-    val foregroundColor = when (settings.variant) {
-        MicrophoneVariant.WHITE -> Color.White
-        MicrophoneVariant.DEFAULT -> settings.color
-        MicrophoneVariant.TRANSPARENT -> settings.color
-    }
+    val backgroundColor = settings.colors.inactiveBackgroundColor
+    val foregroundColor = settings.colors.inactiveForegroundColor
 
     val infiniteTransition = rememberInfiniteTransition(label = "attendiLoadingTransition")
     val rotation by infiniteTransition.animateFloat(
@@ -882,14 +878,21 @@ fun LoadingBeforeRecordingView() {
         ), label = ""
     )
 
-    Icon(
-        imageVector = ImageVector.vectorResource(id = R.drawable.attendilogo),
-        contentDescription = "LoadingIcon",
-        tint = foregroundColor,
+    Box(
         modifier = Modifier
-            .fillMaxSize(0.33f)
-            .graphicsLayer(rotationZ = rotation),
-    )
+            .fillMaxSize()
+            .background(backgroundColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = ImageVector.vectorResource(id = R.drawable.attendilogo),
+            contentDescription = "LoadingIcon",
+            tint = foregroundColor,
+            modifier = Modifier
+                .fillMaxSize(0.33f)
+                .graphicsLayer(rotationZ = rotation),
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -909,16 +912,8 @@ fun RecordingView() {
     val microphoneState = LocalMicrophoneState.current
     val settings = microphoneState.settings
 
-    val backgroundColor = when (settings.variant) {
-        MicrophoneVariant.WHITE, MicrophoneVariant.TRANSPARENT -> Color.Transparent
-        MicrophoneVariant.DEFAULT -> settings.color
-    }
-
-    val foregroundColor = when (settings.variant) {
-        MicrophoneVariant.WHITE -> Color.White
-        MicrophoneVariant.DEFAULT -> Color.White
-        MicrophoneVariant.TRANSPARENT -> settings.color
-    }
+    val backgroundColor = settings.colors.activeBackgroundColor
+    val foregroundColor = settings.colors.activeForegroundColor
 
     val showOptions = settings.showOptionsVariant == MicrophoneOptionsVariant.ALWAYS_VISIBLE
 
@@ -988,16 +983,8 @@ fun RecordingViewPreview() {
 fun ProcessingView() {
     val settings = LocalMicrophoneState.current.settings
 
-    val backgroundColor = when (settings.variant) {
-        MicrophoneVariant.WHITE, MicrophoneVariant.TRANSPARENT -> Color.Transparent
-        MicrophoneVariant.DEFAULT -> settings.color
-    }
-
-    val foregroundColor = when (settings.variant) {
-        MicrophoneVariant.WHITE -> Color.White
-        MicrophoneVariant.DEFAULT -> Color.White
-        MicrophoneVariant.TRANSPARENT -> settings.color
-    }
+    val backgroundColor = settings.colors.activeBackgroundColor
+    val foregroundColor = settings.colors.activeForegroundColor
 
     val showOptions = settings.showOptionsVariant == MicrophoneOptionsVariant.ALWAYS_VISIBLE
 

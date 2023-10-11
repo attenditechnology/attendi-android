@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -21,10 +21,6 @@ import androidx.compose.ui.unit.dp
  * Used to change aspects of the microphone's appearance.
  */
 data class MicrophoneModifier(
-    /**
-     * The main color of the microphone.
-     */
-    val color: Color? = null,
     /**
      *  Sets the width and height of the microphone. If showOptions is false, the width and height
      *  will be equal. If showOptions is true, the width will be twice the height.
@@ -36,6 +32,53 @@ data class MicrophoneModifier(
      */
     val cornerRadius: Dp? = null
 )
+
+@Immutable
+data class AttendiMicrophoneColors internal constructor(
+    val activeForegroundColor: Color,
+    val activeBackgroundColor: Color,
+    val inactiveForegroundColor: Color,
+    val inactiveBackgroundColor: Color
+)
+
+const val defaultBaseColor = 0xFF1C69E8
+
+/**
+ * Contains the default values used by [AttendiMicrophone].
+ */
+@Immutable
+object AttendiMicrophoneDefaults {
+    val Size = 48.dp
+
+    /**
+     * Creates a [AttendiMicrophoneColors] that represents the default
+     * colors used in a [AttendiMicrophone].
+     *
+     * @param baseColor Other colors are derived from this color. Convenient if not
+     * wanting to specify all colors.
+     * @param inactiveBackgroundColor The background color of the microphone when it is not recording
+     * or loading.
+     * @param inactiveForegroundColor The foreground color of the microphone when it is not recording
+     * or loading.
+     * @param activeBackgroundColor The background color of the microphone when it is recording or
+     * processing the recording.
+     * @param activeForegroundColor The foreground color of the microphone when it is recording or
+     * processing the recording.
+     */
+    fun colors(
+        baseColor: Color = Color(defaultBaseColor),
+        inactiveBackgroundColor: Color = Color.Transparent,
+        inactiveForegroundColor: Color = baseColor,
+        activeBackgroundColor: Color = baseColor,
+        activeForegroundColor: Color = Color.White
+        ): AttendiMicrophoneColors =
+        AttendiMicrophoneColors(
+            inactiveBackgroundColor = inactiveBackgroundColor,
+            inactiveForegroundColor = inactiveForegroundColor,
+            activeBackgroundColor = activeBackgroundColor,
+            activeForegroundColor = activeForegroundColor,
+        )
+}
 
 enum class MicrophoneVariant {
     DEFAULT,
@@ -51,6 +94,7 @@ enum class MicrophoneOptionsVariant {
 
 data class MicrophoneSettings(
     var size: Dp = 48.dp,
+    var colors: AttendiMicrophoneColors = AttendiMicrophoneDefaults.colors(),
     var color: Color = Color(0xFF1C69E8),
     var showOptionsVariant: MicrophoneOptionsVariant = MicrophoneOptionsVariant.HIDDEN,
     var cornerRadius: Dp? = null,
