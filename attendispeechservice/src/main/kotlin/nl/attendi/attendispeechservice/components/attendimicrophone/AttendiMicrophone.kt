@@ -157,7 +157,7 @@ fun AttendiMicrophone(
     plugins: List<AttendiMicrophonePlugin> = listOf(),
     silent: Boolean = false,
     showOptions: Boolean = false,
-    onState: (state: AttendiMicrophoneState) -> Unit = {_ -> },
+    onState: (state: AttendiMicrophoneState) -> Unit = { _ -> },
     onEvent: (name: String, Any) -> Unit = { _, _ -> },
     onResult: (String) -> Unit = { },
 ) {
