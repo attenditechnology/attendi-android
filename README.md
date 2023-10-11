@@ -70,14 +70,22 @@ import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicro
 
 AttendiMicrophone(
     // We can use some general Compose modifiers here, such as `padding`, but some like
-    // `size` won't work. In general, check first whether `MicrophoneModifier` has a parameter
+    // `size` won't work. In general, check first whether `AttendiMicrophone` has a parameter
     // to change the aspect of the microphone that you want to change.
     modifier = Modifier
         .border(1.dp, pinkColor, RoundedCornerShape(percent = 50))
         .background(Color.White),
-    // Change aspects of the microphone's appearance, such as size and color,
-    // using the `microphoneModifier` parameter
-    microphoneModifier = MicrophoneModifier(size = 64.dp, color = pinkColor),
+    // Change the microphone's size
+    size = 64.dp,
+    // Change the microphone's color
+    colors = AttendiMicrophoneDefaults.colors(baseColor = myColor),
+    // Or do this if you need more control over the microphone's colors
+    // colors = AttendiMicrophoneDefaults.colors(
+    //     inactiveBackgroundColor = myColor,
+    //     inactiveForegroundColor = Color.White,
+    //     activeBackgroundColor = myColor,
+    //     activeForegroundColor = Color.White,
+    // ),
     // Add plugins if necessary. These extend the functionality of the microphone component.
     plugins = listOf(
         AttendiErrorPlugin(),
@@ -116,10 +124,6 @@ For more details on the `AttendiMicrophone`'s API, see its docstring.
 The `AttendiMicrophone` exposes two callbacks in its initializer: `onEvent` and `onResult`. The `onResult` callback can be called by plugins when they want to signal a result to the client when that result is in text (string) form. As seen in the example above, the text can be accessed by the client by providing a closure to the `onResult` parameter.
 
 The `onEvent` callback can be called by plugins when they want to signal a more general event to the client. Plugins can call `onEvent` and pass it an event name and a result object. The client can then listen for these events by providing a closure to the `onEvent` parameter. The client can then check the event name and the result object to determine what to do.
-
-## Styling
-
-The microphone component can be styled using the `microphoneModifier` parameter. See the `MicrophoneModifier`'s docstring for more details.
 
 ## Creating a plugin
 

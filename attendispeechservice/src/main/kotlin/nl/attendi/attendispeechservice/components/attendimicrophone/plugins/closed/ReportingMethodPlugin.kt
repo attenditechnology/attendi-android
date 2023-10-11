@@ -268,9 +268,7 @@ fun LinearReportingMethodView(
                     verticalArrangement = Arrangement.Bottom
                 ) {
                     AttendiMicrophone(
-                        // microphoneModifier = MicrophoneModifier(
-                        //     size = 58.0,
-                        // ),
+                        // size = 58.dp,
                         plugins = listOf(
                             AttendiTranscribePlugin(
                                 TranscribeAPIConfig(
@@ -406,9 +404,7 @@ fun LinearReportingMethodView(
                 Spacer(modifier = Modifier.weight(1f)) // This acts as the first button
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     AttendiMicrophone(
-                        // microphoneModifier = MicrophoneModifier(
-                        //     size = 58.0,
-                        // ),
+                        // size = 58.0,
                         plugins = listOf(
                             AttendiTranscribePlugin(
                                 TranscribeAPIConfig(

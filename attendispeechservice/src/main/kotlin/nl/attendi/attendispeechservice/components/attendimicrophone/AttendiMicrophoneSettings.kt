@@ -17,22 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/**
- * Used to change aspects of the microphone's appearance.
- */
-data class MicrophoneModifier(
-    /**
-     *  Sets the width and height of the microphone. If showOptions is false, the width and height
-     *  will be equal. If showOptions is true, the width will be twice the height.
-     */
-    val size: Dp? = null,
-    /**
-     * Sets the corner radius of the microphone. If not set, the button will have a RoundedCornerShape
-     * of 50 percent.
-     */
-    val cornerRadius: Dp? = null
-)
-
 @Immutable
 data class AttendiMicrophoneColors internal constructor(
     val activeForegroundColor: Color,
@@ -71,7 +55,7 @@ object AttendiMicrophoneDefaults {
         inactiveForegroundColor: Color = baseColor,
         activeBackgroundColor: Color = baseColor,
         activeForegroundColor: Color = Color.White
-        ): AttendiMicrophoneColors =
+    ): AttendiMicrophoneColors =
         AttendiMicrophoneColors(
             inactiveBackgroundColor = inactiveBackgroundColor,
             inactiveForegroundColor = inactiveForegroundColor,

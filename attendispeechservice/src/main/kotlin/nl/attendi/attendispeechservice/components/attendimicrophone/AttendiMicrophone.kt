@@ -16,7 +16,6 @@ package nl.attendi.attendispeechservice.components.attendimicrophone
 
 import AttendiMicrophoneColors
 import AttendiMicrophoneDefaults
-import MicrophoneModifier
 import MicrophoneOptionsVariant
 import MicrophoneSettings
 import android.Manifest
@@ -71,6 +70,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.times
@@ -112,9 +112,9 @@ val LocalMicrophoneState =
  * Example:
  * ```kotlin
  * AttendiMicrophone(
- *  microphoneModifier = MicrophoneModifier(
- *    size = 64.dp, color = Color.Red, cornerRadius = 16.dp
- *  ),
+ *  size = 64.dp,
+ *  colors = AttendiMicrophoneDefaults.colors(baseColor = Color.Red),
+ *  cornerRadius = 16.dp,
  *  plugins = listOf(
  *    AttendiErrorPlugin(),
  *    AttendiTranscribePlugin()
@@ -125,10 +125,14 @@ val LocalMicrophoneState =
  * ```
  *
  * @param modifier While the modifier allows changing some visual properties of the contained components,
- * it is recommended to use the [microphoneModifier] instead, which contains styling options
+ * it is recommended to use this component's parameters instead where possible, which contains styling options
  * specific to the [AttendiMicrophone].
- * @param microphoneModifier Use this to change certain aspects of the microphone's appearance.
- * To see what properties can be changed, see [MicrophoneModifier].
+ * @param size Sets the width and height of the microphone. If showOptions is false,
+ * the width and height will be equal. If showOptions is true, the width will be twice the height.
+ * @param cornerRadius Sets the corner radius of the microphone. If not set, the button will have a
+ * RoundedCornerShape of 50 percent.
+ * @param colors Use this to change the colors of the microphone. To see what colors can be changed,
+ * see [AttendiMicrophoneDefaults.colors].
  * @param plugins Functionality can be added to this component through a plugin system.
  * See the [AttendiMicrophonePlugin] interface for more information.
  * @param silent By default, the component will play a sound when the recording is
@@ -154,7 +158,8 @@ val LocalMicrophoneState =
 @Composable
 fun AttendiMicrophone(
     modifier: Modifier = Modifier,
-    microphoneModifier: MicrophoneModifier = MicrophoneModifier(),
+    cornerRadius: Dp? = null,
+    size: Dp = 48.dp,
     colors: AttendiMicrophoneColors = AttendiMicrophoneDefaults.colors(),
     plugins: List<AttendiMicrophonePlugin> = listOf(),
     silent: Boolean = false,
@@ -166,7 +171,9 @@ fun AttendiMicrophone(
     val context = LocalContext.current
 
     val settings = MicrophoneSettings(
+        size = size,
         colors = colors,
+        cornerRadius = cornerRadius
     )
 
     // TODO: implement showOptions properly
@@ -176,9 +183,6 @@ fun AttendiMicrophone(
     } else {
         settings.showOptionsVariant = MicrophoneOptionsVariant.HIDDEN
     }
-
-    microphoneModifier.size?.let { settings.size = it }
-    microphoneModifier.cornerRadius?.let { settings.cornerRadius = it }
 
     // Bottom sheet
     val isOptionsMenuOpen = rememberSaveable { mutableStateOf(false) }
