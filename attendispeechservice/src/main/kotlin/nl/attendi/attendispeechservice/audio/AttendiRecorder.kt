@@ -48,7 +48,14 @@ private val bufferSize = if (minBufferSize <= 1) 2560 else 2 * minBufferSize
  */
 @SuppressLint("MissingPermission")
 class AttendiRecorder {
-    var audioRecord: AudioRecord? = null
+    enum class RecordingState {
+        Recording, Stopped
+    }
+
+    /**
+     * The `AudioRecord` instance (Android low-level recording API) used to record audio.
+     */
+    private var audioRecord: AudioRecord? = null
 
     /**
      * Used to read data from the microphone / AudioRecord instance. Only holds one read worth of data.
@@ -72,6 +79,9 @@ class AttendiRecorder {
     // cancel it when the user stops recording.
     var recordAudioJob: Job? = null
 
+    var state: RecordingState = RecordingState.Stopped
+        private set
+
     /**
      * Start recording audio. The audio samples are sampled at a sample rate of 16KHz,
      * and represented as 16-bit signed integers. The samples are accumulated in [_buffer].
@@ -82,6 +92,7 @@ class AttendiRecorder {
         )
 
         audioRecord?.startRecording()
+        state = RecordingState.Recording
 
         coroutineScope {
             recordAudioJob = launch(Dispatchers.Default) {
@@ -116,6 +127,7 @@ class AttendiRecorder {
         audioRecord = null
         recordAudioJob?.cancel()
         recordAudioJob = null
+        state = RecordingState.Stopped
     }
 
     /** Clear the recorder's buffer's stored samples. */

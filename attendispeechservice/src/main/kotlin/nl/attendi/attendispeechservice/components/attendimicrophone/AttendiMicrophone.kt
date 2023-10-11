@@ -73,6 +73,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.times
+import androidx.lifecycle.Lifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.*
@@ -193,9 +194,9 @@ fun AttendiMicrophone(
     val recorder by remember { mutableStateOf(AttendiRecorder()) }
 
     // Used to launch activities, such as going to the settings to grant the microphone permission.
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-        onResult = {})
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult(),
+            onResult = {})
 
     // Used so that we don't call some LaunchEffect functions on first render. Only when an
     // observed state variable's value actually changes.
@@ -258,6 +259,38 @@ fun AttendiMicrophone(
 
         for (callback in microphoneState.UIStateCallbacks) {
             callback(microphoneState.microphoneUIState)
+        }
+    }
+
+    // Keeps track of whether the recording was interrupted by the app being backgrounded. This
+    // is used to resume recording when the app is foregrounded again. We need it since
+    // `Lifecycle.Event.ON_RESUME` is also called when the composable enters the view, and doesn't
+    // necessarily mean that the recording was interrupted
+    var recordingInterruptedByBackgrounding by remember { mutableStateOf(false) }
+
+    // Handle backgrounding and foregrounding of the app. The current intended behavior is that
+    // recording is paused when the app is backgrounded, and resumed when the app is foregrounded.
+    OnLifecycleEvent { _, event ->
+        when (event) {
+            Lifecycle.Event.ON_RESUME -> {
+                if (recordingInterruptedByBackgrounding &&
+                    recorder.state != AttendiRecorder.RecordingState.Recording
+                ) {
+                    recordingInterruptedByBackgrounding = false
+                    coroutineScope.launch {
+                        recorder.startRecording()
+                    }
+                }
+            }
+
+            Lifecycle.Event.ON_PAUSE -> {
+                if (recorder.state == AttendiRecorder.RecordingState.Recording) {
+                    recorder.stopRecording()
+                    recordingInterruptedByBackgrounding = true
+                }
+            }
+
+            else -> {}
         }
     }
 
