@@ -57,8 +57,10 @@ import androidx.compose.ui.unit.dp
 import nl.attendi.attendispeechservice.client.ModelType
 import nl.attendi.attendispeechservice.client.TranscribeAPIConfig
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
+import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import nl.attendi.attendispeechservice.components.attendimicrophone.MicrophoneUIState
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiTranscribePlugin
 import nl.attendi.attendispeechserviceexample.ui.theme.AttendiSpeechServiceExampleTheme
 
@@ -253,12 +255,14 @@ fun HoveringMicrophoneScreen() {
                 plugins = listOf(
                     AttendiErrorPlugin(),
                     AttendiTranscribePlugin(apiConfig = exampleAPIConfig),
-                ),
-                onState = { state ->
-                    state.onUIState {
-                        microphoneUIState = it
+                    object : AttendiMicrophonePlugin {
+                        override fun activate(state: AttendiMicrophoneState) {
+                            state.onUIState {
+                                microphoneUIState = it
+                            }
+                        }
                     }
-                },
+                ),
                 onResult = {
                     when (focusedTextField) {
                         1 -> text1 = addParagraph(text1, it)
