@@ -36,6 +36,7 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -739,7 +740,7 @@ class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor
         isDialogOpen = true
     }
 
-    // ========== Animateable elements ==========
+    // ========== Animatable elements ==========
 
     private var _animatedMicrophoneFillLevel by mutableStateOf(0.0)
 
@@ -941,13 +942,19 @@ fun RecordingView() {
             val microphoneFillPercentage =
                 startYPercentage - (startYPercentage - endYPercentage) * microphoneState.animatedMicrophoneFillLevel
 
+            // Make the animation a bit smoother by tweening between the current and the target value
+            val animatedMicrophoneFillPercentage: Float by animateFloatAsState(
+                targetValue = microphoneFillPercentage.toFloat(), animationSpec = tween(150),
+                label = "attendiMicrophoneFillPercentage"
+            )
+
             // Microphone volume fill
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawLine(
                     color = foregroundColor,
                     start = Offset((0.5 * maxWidth).toPx(), (0.61 * maxHeight).toPx()),
                     end = Offset(
-                        (0.5 * maxWidth).toPx(), (microphoneFillPercentage * maxHeight).toPx()
+                        (0.5 * maxWidth).toPx(), (animatedMicrophoneFillPercentage * maxHeight).toPx()
                     ),
                     strokeWidth = (0.33 * maxWidth).toPx(),
                 )
