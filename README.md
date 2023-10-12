@@ -90,15 +90,16 @@ AttendiMicrophone(
     plugins = listOf(
         AttendiErrorPlugin(),
         AttendiTranscribePlugin(apiConfig = exampleAPIConfig),
-    ),
-    // Use `onState` to access the microphone's state that exposes its plugin APIs and other
-    // useful information. In this case, we use it to listen to the microphone's UI state, which
-    // we can use to show some UI conditional on this state.
-    onState = { state ->
-        state.onUIState {
-            print(it)
+        // Anonymous objects allow us to create a plugin without having to create a new class,
+        // thereby giving access to our view's state.
+        object : AttendiMicrophonePlugin {
+            override fun activate(state: AttendiMicrophoneState) {
+                state.onUIState {
+                    microphoneUIState = it
+                }
+            }
         }
-    },
+    ),
     // Use `onEvent` to listen to arbitrary events
     onEvent = { name, data ->
         when (name) {
