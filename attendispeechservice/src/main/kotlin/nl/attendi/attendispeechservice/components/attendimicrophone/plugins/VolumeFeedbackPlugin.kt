@@ -31,7 +31,7 @@ class VolumeFeedbackPlugin : AttendiMicrophonePlugin {
             val alpha = getMovingAverageAlpha(it)
             volume = (1 - alpha) * volume + alpha * it
 
-            val normalizedVolume = normalizeVolume(volume).pow(0.2)
+            val normalizedVolume = normalizeVolume(volume)
 
             // We want to always scale the volume feedback by at least this factor of the maximum size
             // This means that the volume feedback will always be visible,
@@ -79,7 +79,7 @@ fun getMovingAverageAlpha(currentVolume: Double): Double {
  * Hand tuned to give good values for the microphone volume, such that the value is 0 when
  * not talking, and 1 when talking at a normal volume.
  *
- * During testing, observed values were around 300 when no speaking occurred, with speaking volume up
- * to 8000 - 10000.
+ * During testing, observed values were around 700 when no speaking occurred, with speaking volume up
+ * to 3000-5000.
  */
-fun normalizeVolume(audioLevel: Double) = ((audioLevel - 400) / 3000).coerceIn(0.0, 1.0)
+fun normalizeVolume(audioLevel: Double) = ((audioLevel - 800) / 2400).coerceIn(0.0, 1.0).pow(0.25)
