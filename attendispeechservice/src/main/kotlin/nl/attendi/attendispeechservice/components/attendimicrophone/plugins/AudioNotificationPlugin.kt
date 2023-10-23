@@ -18,6 +18,8 @@ import android.media.MediaPlayer
 import nl.attendi.attendispeechservice.R
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import nl.attendi.attendispeechservice.components.attendimicrophone.MicrophoneUIState
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * Play sounds at certain points of the microphone component's lifecycle to give more feedback
@@ -38,13 +40,42 @@ class AudioNotificationPlugin : AttendiMicrophonePlugin {
             errorNotificationSound = MediaPlayer.create(state.context, R.raw.error_notification)
         }
 
+        state.onBeforeStartRecording {
+            val t1 = System.currentTimeMillis()
+
+            suspendCoroutine { continuation ->
+                if (startNotificationSound == null) {
+                    continuation.resume(Unit)
+                }
+
+                // We await until the audio has finished playing before starting recording,
+                // to prevent the recorded audio from containing the notification sound. This was
+                // leading to some erroneous transcriptions that added an 'o' at the beginning of the
+                // transcript. This is done here by resuming the coroutine once the audio has finished
+                // playing.
+                startNotificationSound?.setOnCompletionListener {
+                    continuation.resume(Unit)
+                }
+
+                startNotificationSound?.start()
+            }
+
+            val playAudioDuration = System.currentTimeMillis() - t1
+
+            // Since playing the notification audio takes some time, we shorten the
+            // delay before showing the recording screen by the same amount of time. Otherwise the
+            // user would wait longer than necessary before seeing the recording UI.
+            state.shortenShowRecordingDelayByMilliseconds = playAudioDuration.toInt()
+        }
+
         state.onUIState { uiState ->
             if (uiState == MicrophoneUIState.Recording) {
-                startNotificationSound?.start()
+                // Reset the delay to 0, just to clean up after ourselves.
+                state.shortenShowRecordingDelayByMilliseconds = 0
             }
         }
 
-        state.onBeforeStopRecording {
+        state.onStopRecording {
             stopNotificationSound?.start()
         }
 
