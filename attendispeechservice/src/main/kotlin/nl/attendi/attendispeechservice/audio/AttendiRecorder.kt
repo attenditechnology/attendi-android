@@ -23,6 +23,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import kotlin.math.sqrt
 
 const val AUDIO_SAMPLE_RATE = 16000
@@ -32,22 +35,19 @@ private const val AUDIO_CHANNEL = AudioFormat.CHANNEL_IN_MONO
 private const val AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT
 
 // Calculate minimum buffer size
-private val minBufferSize =
-    AudioRecord.getMinBufferSize(
-        AUDIO_SAMPLE_RATE,
-        AUDIO_CHANNEL,
-        AUDIO_ENCODING
-    )
+private val minBufferSize = AudioRecord.getMinBufferSize(
+    AUDIO_SAMPLE_RATE, AUDIO_CHANNEL, AUDIO_ENCODING
+)
 
 private val bufferSize = if (minBufferSize <= 1) 2560 else 2 * minBufferSize
 
 /**
  * Wraps the lower-level `AudioRecord` APIs to provide a convenient interface for recording audio
- * from the device. Curently the audio samples are sampled at a sample rate of 16KHz, and represented as
+ * from the device. Currently the audio samples are sampled at a sample rate of 16KHz, and represented as
  * 16-bit signed integers. The samples are accumulated in [AttendiRecorder._buffer].
  */
 @SuppressLint("MissingPermission")
-class AttendiRecorder {
+class AttendiRecorder(private val bufferFile: File) {
     enum class RecordingState {
         Recording, Stopped
     }
@@ -63,21 +63,14 @@ class AttendiRecorder {
      */
     private val temporaryAudioBuffer = ShortArray(bufferSize)
 
-    /**
-     * The buffer that holds all audio samples. We use `_buffer` internally to make sure clients
-     * only have read-access to the buffer.
-     */
-    private val _buffer = mutableListOf<Short>()
-
-    /**
-     * A read-only view of the audio buffer that can be accessed by clients.
-     */
-    val buffer: List<Short> get() = _buffer
-
     // We launch the actual recording in a coroutine, so we can update the UI while recording
     // and not block the main thread. We also use a Job to keep track of the coroutine, so we can
     // cancel it when the user stops recording.
-    var recordAudioJob: Job? = null
+    private var recordAudioJob: Job? = null
+
+    // The recorder's buffer is currently implemented as a file. When recording audio, we write
+    // the audio samples using this output stream.
+    private var bufferFileOutputStream: FileOutputStream? = null
 
     var state: RecordingState = RecordingState.Stopped
         private set
@@ -93,6 +86,12 @@ class AttendiRecorder {
 
         audioRecord?.startRecording()
         state = RecordingState.Recording
+
+        if (bufferFileOutputStream == null) {
+            bufferFileOutputStream = withContext(Dispatchers.IO) {
+                FileOutputStream(bufferFile, true)
+            }
+        }
 
         coroutineScope {
             recordAudioJob = launch(Dispatchers.Default) {
@@ -110,29 +109,51 @@ class AttendiRecorder {
                         callback(newSignalEnergy)
                     }
 
-                    withContext(Dispatchers.Main) {
-                        _buffer.addAll(samples)
+                    val byteArray = shortListToByteArray(samples)
+                    bufferFileOutputStream?.let {
+                        withContext(Dispatchers.IO) {
+                            it.write(byteArray)
+                        }
                     }
                 }
             }
         }
     }
 
+    val buffer: List<Short>
+        get() {
+            if (!bufferFile.exists()) return emptyList()
+
+            return FileInputStream(bufferFile).use {
+                val bytes = it.readBytes()
+                byteArrayToShortList(bytes)
+            }
+        }
+
     /**
      * Stop recording audio and release the recording resources.
      */
     fun stopRecording() {
+        // It's important that the job is cancelled before the audioRecord is stopped and released,
+        // since the job uses the AudioRecord instance. If an error accessing the released instance
+        // happens in the recording loop, it just keeps running forever, leading to buggy behavior.
+        recordAudioJob?.cancel()
+        recordAudioJob = null
+
         audioRecord?.stop()
         audioRecord?.release()
         audioRecord = null
-        recordAudioJob?.cancel()
-        recordAudioJob = null
+
         state = RecordingState.Stopped
     }
 
-    /** Clear the recorder's buffer's stored samples. */
     fun clearBuffer() {
-        _buffer.clear()
+        if (bufferFileOutputStream != null) {
+            bufferFileOutputStream?.close()
+            bufferFileOutputStream = null
+        }
+
+        if (bufferFile.exists()) bufferFile.delete()
     }
 
     private var signalEnergyCallbacks: MutableList<suspend (Double) -> Unit> = mutableListOf()
@@ -169,6 +190,28 @@ class AttendiRecorder {
 fun rootMeanSquare(samples: List<Short>): Double {
     val sum = samples.fold(0.0) { acc, element -> acc + element * element }
     return sqrt(sum / samples.size)
+}
+
+private fun byteArrayToShortList(byteArray: ByteArray): List<Short> {
+    return byteArray.asList().chunked(2).asSequence()
+        .map { ((it[0].toInt() and 0xFF) shl 8) or (it[1].toInt() and 0xFF) }.map { it.toShort() }
+        .toList()
+}
+
+private fun shortListToByteArray(shortList: List<Short>): ByteArray {
+    // Each Short is 2 bytes
+    val byteArray = ByteArray(shortList.size * 2)
+
+    for (i in shortList.indices) {
+        val shortValue = shortList[i]
+        // Most significant byte
+        byteArray[i * 2] = (shortValue.toInt() shr 8).toByte()
+
+        // Least significant byte
+        byteArray[i * 2 + 1] = shortValue.toByte()
+    }
+
+    return byteArray
 }
 
 

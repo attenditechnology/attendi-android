@@ -86,6 +86,7 @@ import nl.attendi.attendispeechservice.audio.pcmToWav
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AudioNotificationPlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.VolumeFeedbackPlugin
+import java.io.File
 import java.util.*
 
 enum class MicrophoneUIState {
@@ -94,6 +95,8 @@ enum class MicrophoneUIState {
 
 private const val START_RECORDING_DELAY_MILLISECONDS: Long = 500
 private const val STOP_RECORDING_DELAY_MILLISECONDS: Long = 300
+
+private const val OLD_AUDIO_FILE_THRESHOLD_MILLISECONDS = 20 * 60 * 1000
 
 val LocalMicrophoneState =
     compositionLocalOf<AttendiMicrophoneState> { error("No MicrophoneState found!") }
@@ -166,9 +169,7 @@ fun AttendiMicrophone(
     val context = LocalContext.current
 
     val settings = MicrophoneSettings(
-        size = size,
-        colors = colors,
-        cornerRadius = cornerRadius
+        size = size, colors = colors, cornerRadius = cornerRadius
     )
 
     // TODO: implement showOptions properly
@@ -193,12 +194,15 @@ fun AttendiMicrophone(
 
     val coroutineScope = rememberCoroutineScope()
 
-    val recorder by remember { mutableStateOf(AttendiRecorder()) }
+    val recorderBufferFile =
+        File(context.filesDir, "attendi_recorder_samples_${UUID.randomUUID()}.pcm")
+    // TODO: make rememberSaveable
+    val recorder by remember { mutableStateOf(AttendiRecorder(recorderBufferFile)) }
 
     // Used to launch activities, such as going to the settings to grant the microphone permission.
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-        onResult = {})
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult(),
+            onResult = {})
 
     // Used so that we don't call some LaunchEffect functions on first render. Only when an
     // observed state variable's value actually changes.
@@ -238,6 +242,21 @@ fun AttendiMicrophone(
         }
     }
 
+    // Currently, the Attendi Recorder uses the file system to save audio samples when recording.
+    // Here we delete old audio files if they exist, just in case any files were not properly cleaned
+    // previously.
+    // TODO: currently leaks implementation details of the AttendiRecorder to the AttendiMicrophone,
+    //  where should this logic be put?
+    LaunchedEffect(Unit) {
+        val files = context.filesDir.listFiles()?.toList() ?: return@LaunchedEffect
+
+        val oldFiles = files.filter { it.name.startsWith("attendi_recorder_samples_") }.filter {
+            System.currentTimeMillis() - it.lastModified() > OLD_AUDIO_FILE_THRESHOLD_MILLISECONDS
+        }
+
+        oldFiles.forEach { it.delete() }
+    }
+
     // Deactivate plugins when the microphone leaves the composition
     DisposableEffect(Unit) {
         onDispose {
@@ -245,6 +264,10 @@ fun AttendiMicrophone(
                 allPlugins.forEach {
                     it.deactivate(microphoneState)
                 }
+
+                // If we're using a file to store the audio samples,
+                // we need to take extra care to delete it.
+                recorder.clearBuffer()
             }
         }
     }
@@ -944,7 +967,8 @@ fun RecordingView() {
 
             // Make the animation a bit smoother by tweening between the current and the target value
             val animatedMicrophoneFillPercentage: Float by animateFloatAsState(
-                targetValue = microphoneFillPercentage.toFloat(), animationSpec = tween(150),
+                targetValue = microphoneFillPercentage.toFloat(),
+                animationSpec = tween(150),
                 label = "attendiMicrophoneFillPercentage"
             )
 
@@ -954,7 +978,8 @@ fun RecordingView() {
                     color = foregroundColor,
                     start = Offset((0.5 * maxWidth).toPx(), (0.61 * maxHeight).toPx()),
                     end = Offset(
-                        (0.5 * maxWidth).toPx(), (animatedMicrophoneFillPercentage * maxHeight).toPx()
+                        (0.5 * maxWidth).toPx(),
+                        (animatedMicrophoneFillPercentage * maxHeight).toPx()
                     ),
                     strokeWidth = (0.33 * maxWidth).toPx(),
                 )
@@ -1077,6 +1102,11 @@ private fun getPreviewMicrophoneState(): AttendiMicrophoneState {
         bottomSheetState = rememberModalBottomSheetState(),
         optionsMenuBottomSheetState = rememberModalBottomSheetState(),
         settings = MicrophoneSettings(),
-        recorder = AttendiRecorder(),
+        recorder = AttendiRecorder(
+            File(
+                LocalContext.current.filesDir,
+                "attendi_recorder_samples_${UUID.randomUUID()}"
+            )
+        ),
     )
 }
