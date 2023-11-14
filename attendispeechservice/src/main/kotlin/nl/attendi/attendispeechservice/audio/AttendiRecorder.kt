@@ -19,9 +19,11 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
@@ -44,13 +46,32 @@ private val bufferSize = if (minBufferSize <= 1) 2560 else 2 * minBufferSize
 /**
  * Wraps the lower-level `AudioRecord` APIs to provide a convenient interface for recording audio
  * from the device. Currently the audio samples are sampled at a sample rate of 16KHz, and represented as
- * 16-bit signed integers. The samples are accumulated in [AttendiRecorder._buffer].
+ * 16-bit signed integers. The samples are accumulated on the filesystem in [bufferFile].
  */
 @SuppressLint("MissingPermission")
-class AttendiRecorder(private val bufferFile: File) {
+class AttendiRecorder(
+    val bufferFile: File,
+    recordingState: RecordingState = RecordingState.Stopped
+) {
     enum class RecordingState {
         Recording, Stopped
     }
+
+    init {
+        println("initializing new AttendiRecorder instance with file=${bufferFile.absolutePath} and recordingState=$recordingState")
+    }
+
+    var recordingState: RecordingState = recordingState
+        set(value) {
+            field = value
+            println("setting `recorder.recordingState` to $value")
+            for (callback in recordingStateCallbacks) {
+                // TODO: way to launch the callback in a non-blocking way?
+                runBlocking {
+                    callback(value)
+                }
+            }
+        }
 
     /**
      * The `AudioRecord` instance (Android low-level recording API) used to record audio.
@@ -72,9 +93,6 @@ class AttendiRecorder(private val bufferFile: File) {
     // the audio samples using this output stream.
     private var bufferFileOutputStream: FileOutputStream? = null
 
-    var state: RecordingState = RecordingState.Stopped
-        private set
-
     /**
      * Start recording audio. The audio samples are sampled at a sample rate of 16KHz,
      * and represented as 16-bit signed integers. The samples are accumulated in [_buffer].
@@ -85,7 +103,7 @@ class AttendiRecorder(private val bufferFile: File) {
         )
 
         audioRecord?.startRecording()
-        state = RecordingState.Recording
+        recordingState = RecordingState.Recording
 
         if (bufferFileOutputStream == null) {
             bufferFileOutputStream = withContext(Dispatchers.IO) {
@@ -97,6 +115,7 @@ class AttendiRecorder(private val bufferFile: File) {
             recordAudioJob = launch(Dispatchers.Default) {
                 while (true) {
                     val readSize = audioRecord?.read(temporaryAudioBuffer, 0, bufferSize) ?: 0
+                    println("recording audio, readSize=$readSize")
                     if (readSize <= 0) continue
 
                     val samples = temporaryAudioBuffer.toList().take(readSize)
@@ -144,7 +163,7 @@ class AttendiRecorder(private val bufferFile: File) {
         audioRecord?.release()
         audioRecord = null
 
-        state = RecordingState.Stopped
+        recordingState = RecordingState.Stopped
     }
 
     fun clearBuffer() {
@@ -158,6 +177,8 @@ class AttendiRecorder(private val bufferFile: File) {
 
     private var signalEnergyCallbacks: MutableList<suspend (Double) -> Unit> = mutableListOf()
     private var audioFrameCallbacks: MutableList<suspend (List<Short>) -> Unit> = mutableListOf()
+    private var recordingStateCallbacks: MutableList<suspend (RecordingState) -> Unit> =
+        mutableListOf()
 
     /**
      * Register a callback that will be called when the signal energy (a measure of the volume)
@@ -181,6 +202,16 @@ class AttendiRecorder(private val bufferFile: File) {
     fun onAudioFrames(callback: suspend (List<Short>) -> Unit): () -> Unit {
         audioFrameCallbacks.add(callback)
         return { audioFrameCallbacks.remove(callback) }
+    }
+
+    /**
+     * Register a callback that will be called when the recorder's [recordingState] changes.
+     *
+     * @return A function that can be used to remove the added callback.
+     */
+    fun onRecordingState(callback: suspend (RecordingState) -> Unit): () -> Unit {
+        recordingStateCallbacks.add(callback)
+        return { recordingStateCallbacks.remove(callback) }
     }
 }
 

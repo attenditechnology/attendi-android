@@ -60,6 +60,7 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.mapSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,11 +96,24 @@ enum class MicrophoneUIState {
 
 private const val START_RECORDING_DELAY_MILLISECONDS: Long = 500
 private const val STOP_RECORDING_DELAY_MILLISECONDS: Long = 300
+private const val AUDIO_BUFFER_FILE_PREFIX = "attendi_recorder_samples_"
 
-private const val OLD_AUDIO_FILE_THRESHOLD_MILLISECONDS = 20 * 60 * 1000
+// Delete audio files that are older than 20 minutes. These are files that were not properly
+// cleaned up previously, for example when an error occurred while recording.
+private const val OLD_AUDIO_FILE_THRESHOLD_MINUTES = 20
 
 val LocalMicrophoneState =
     compositionLocalOf<AttendiMicrophoneState> { error("No MicrophoneState found!") }
+
+val LocalMicrophoneUIState =
+    compositionLocalOf<MicrophoneUIState> { error("No MicrophoneUIState found!") }
+
+val RecorderRecordingStateSaver = run {
+    val recordingStateKey = "recordingState"
+
+    mapSaver(save = { mapOf(recordingStateKey to it.name) },
+        restore = { AttendiRecorder.RecordingState.valueOf(it[recordingStateKey] as String) })
+}
 
 /**
  * The [AttendiMicrophone] is a button that can be used to record audio and then perform tasks
@@ -194,10 +208,16 @@ fun AttendiMicrophone(
 
     val coroutineScope = rememberCoroutineScope()
 
-    val recorderBufferFile =
-        File(context.filesDir, "attendi_recorder_samples_${UUID.randomUUID()}.pcm")
-    // TODO: make rememberSaveable
-    val recorder by remember { mutableStateOf(AttendiRecorder(recorderBufferFile)) }
+    // Handle to the file used to store the audio samples when recording.
+    val recorderBufferFile = rememberSaveable {
+        File(context.filesDir, "$AUDIO_BUFFER_FILE_PREFIX${UUID.randomUUID()}.pcm")
+    }
+
+    val recorder by remember {
+        mutableStateOf(
+            AttendiRecorder(bufferFile = recorderBufferFile)
+        )
+    }
 
     // Used to launch activities, such as going to the settings to grant the microphone permission.
     val launcher =
@@ -209,13 +229,18 @@ fun AttendiMicrophone(
     var isFirstRender by rememberSaveable { mutableStateOf(true) }
 
     // Used so we can fire a callback only on the first interaction with the microphone.
-    var firstClickHappened by remember { mutableStateOf(false) }
+    var firstClickHappened by rememberSaveable { mutableStateOf(false) }
+
+    var microphoneUIState by rememberSaveable {
+        mutableStateOf(MicrophoneUIState.NotStartedRecording)
+    }
 
     // The state is used so that we have a hook-in point for which plugins can perform some
     // operations to change the state of the microphone.
     val microphoneState by remember {
         mutableStateOf(
             AttendiMicrophoneState(
+                microphoneUIState = microphoneUIState,
                 onEvent = onEvent,
                 onResult = onResult,
                 context = context,
@@ -229,13 +254,21 @@ fun AttendiMicrophone(
         )
     }
 
+    LaunchedEffect(Unit) {
+        // We do this since `microphoneUIState` is a `rememberSaveable`, which persists over
+        // configuration changes. The `microphoneState` is recreated on configuration changes,
+        // since it's more difficult to persist (though this might be interesting to do instead).
+        microphoneState.onUIState {
+            microphoneUIState = it
+        }
+    }
+
     val defaultPlugins = listOf(
         AudioNotificationPlugin(),
         VolumeFeedbackPlugin(),
     )
     val allPlugins = defaultPlugins + plugins
 
-    // On first render
     LaunchedEffect(Unit) {
         allPlugins.forEach { plugin ->
             plugin.activate(microphoneState)
@@ -244,17 +277,17 @@ fun AttendiMicrophone(
 
     // Currently, the Attendi Recorder uses the file system to save audio samples when recording.
     // Here we delete old audio files if they exist, just in case any files were not properly cleaned
-    // previously.
-    // TODO: currently leaks implementation details of the AttendiRecorder to the AttendiMicrophone,
-    //  where should this logic be put?
+    // previously. This might for example happen when some error occurs while recording, such that
+    // `clearBuffer` is not called.
     LaunchedEffect(Unit) {
         val files = context.filesDir.listFiles()?.toList() ?: return@LaunchedEffect
 
-        val oldFiles = files.filter { it.name.startsWith("attendi_recorder_samples_") }.filter {
-            System.currentTimeMillis() - it.lastModified() > OLD_AUDIO_FILE_THRESHOLD_MILLISECONDS
-        }
+        val oldAudioBufferFiles =
+            files.filter { it.name.startsWith(AUDIO_BUFFER_FILE_PREFIX) }.filter {
+                System.currentTimeMillis() - it.lastModified() > (OLD_AUDIO_FILE_THRESHOLD_MINUTES * 60 * 1000)
+            }
 
-        oldFiles.forEach { it.delete() }
+        oldAudioBufferFiles.forEach { it.delete() }
     }
 
     // Deactivate plugins when the microphone leaves the composition
@@ -272,31 +305,19 @@ fun AttendiMicrophone(
         }
     }
 
-    LaunchedEffect(microphoneState.microphoneUIState) {
-        // Skip the first render
-        if (isFirstRender) {
-            isFirstRender = false
-            return@LaunchedEffect
-        }
-
-        for (callback in microphoneState.UIStateCallbacks) {
-            callback(microphoneState.microphoneUIState)
-        }
-    }
-
-    // Keeps track of whether the recording was interrupted by the app being backgrounded. This
-    // is used to resume recording when the app is foregrounded again. We need it since
+    // Keeps track of whether the recording was interrupted by lifecycle events such as backgrounding or rotation.
+    // This is used to resume recording when the app is foregrounded again. We need it since
     // `Lifecycle.Event.ON_RESUME` is also called when the composable enters the view, and doesn't
     // necessarily mean that the recording was interrupted
-    var recordingInterruptedByBackgrounding by remember { mutableStateOf(false) }
+    var recordingInterruptedByLifecycle by rememberSaveable { mutableStateOf(false) }
 
     // Handle backgrounding and foregrounding of the app. The current intended behavior is that
     // recording is paused when the app is backgrounded, and resumed when the app is foregrounded.
     OnLifecycleEvent { _, event ->
         when (event) {
             Lifecycle.Event.ON_RESUME -> {
-                if (recordingInterruptedByBackgrounding && recorder.state != AttendiRecorder.RecordingState.Recording) {
-                    recordingInterruptedByBackgrounding = false
+                if (recordingInterruptedByLifecycle && recorder.recordingState != AttendiRecorder.RecordingState.Recording) {
+                    recordingInterruptedByLifecycle = false
                     coroutineScope.launch {
                         recorder.startRecording()
                     }
@@ -304,9 +325,11 @@ fun AttendiMicrophone(
             }
 
             Lifecycle.Event.ON_PAUSE -> {
-                if (recorder.state == AttendiRecorder.RecordingState.Recording) {
-                    recorder.stopRecording()
-                    recordingInterruptedByBackgrounding = true
+                if (recorder.recordingState == AttendiRecorder.RecordingState.Recording) {
+                    coroutineScope.launch {
+                        recorder.stopRecording()
+                    }
+                    recordingInterruptedByLifecycle = true
                 }
             }
 
@@ -434,7 +457,7 @@ fun AttendiMicrophone(
             }
         }
 
-        when (microphoneState.microphoneUIState) {
+        when (microphoneUIState) {
             MicrophoneUIState.NotStartedRecording -> {
                 coroutineScope.launch {
                     handleErrors { start() }
@@ -451,7 +474,10 @@ fun AttendiMicrophone(
         }
     }
 
-    CompositionLocalProvider(LocalMicrophoneState provides microphoneState) {
+    CompositionLocalProvider(
+        LocalMicrophoneState provides microphoneState,
+        LocalMicrophoneUIState provides microphoneUIState
+    ) {
         AttendiMicrophoneView(
             modifier = modifier,
             onClick = { onClick() },
@@ -490,6 +516,7 @@ fun AttendiMicrophone(
 }
 
 class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor(
+    microphoneUIState: MicrophoneUIState = MicrophoneUIState.NotStartedRecording,
     val onEvent: (String, Any) -> Unit,
     val onResult: (String) -> Unit,
     val context: Context,
@@ -500,7 +527,14 @@ class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor
     val settings: MicrophoneSettings = MicrophoneSettings(),
     val recorder: AttendiRecorder,
 ) {
-    var microphoneUIState by mutableStateOf(MicrophoneUIState.NotStartedRecording)
+    // var microphoneUIState by mutableStateOf(MicrophoneUIState.NotStartedRecording)
+    var microphoneUIState: MicrophoneUIState = microphoneUIState
+        set(value) {
+            field = value
+            for (callback in UIStateCallbacks) {
+                callback(value)
+            }
+        }
 
     internal var menuGroups by mutableStateOf(listOf<MenuGroup>())
 
@@ -787,8 +821,9 @@ fun AttendiMicrophoneView(
     openMenu: () -> Unit,
 ) {
     val microphoneState = LocalMicrophoneState.current
+    val microphoneUIState = LocalMicrophoneUIState.current
+
     val settings = microphoneState.settings
-    val microphoneUIState = microphoneState.microphoneUIState
 
     val isRecording =
         microphoneUIState == MicrophoneUIState.Recording || microphoneUIState == MicrophoneUIState.Processing
@@ -1104,8 +1139,7 @@ private fun getPreviewMicrophoneState(): AttendiMicrophoneState {
         settings = MicrophoneSettings(),
         recorder = AttendiRecorder(
             File(
-                LocalContext.current.filesDir,
-                "attendi_recorder_samples_${UUID.randomUUID()}"
+                LocalContext.current.filesDir, "attendi_recorder_samples_${UUID.randomUUID()}"
             )
         ),
     )
