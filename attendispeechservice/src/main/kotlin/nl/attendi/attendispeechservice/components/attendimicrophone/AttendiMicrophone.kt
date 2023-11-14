@@ -315,21 +315,21 @@ fun AttendiMicrophone(
     // recording is paused when the app is backgrounded, and resumed when the app is foregrounded.
     OnLifecycleEvent { _, event ->
         when (event) {
-            Lifecycle.Event.ON_RESUME -> {
-                if (recordingInterruptedByLifecycle && recorder.recordingState != AttendiRecorder.RecordingState.Recording) {
-                    recordingInterruptedByLifecycle = false
-                    coroutineScope.launch {
-                        recorder.startRecording()
-                    }
-                }
-            }
-
             Lifecycle.Event.ON_PAUSE -> {
                 if (recorder.recordingState == AttendiRecorder.RecordingState.Recording) {
                     coroutineScope.launch {
                         recorder.stopRecording()
                     }
                     recordingInterruptedByLifecycle = true
+                }
+            }
+
+            Lifecycle.Event.ON_RESUME -> {
+                if (recordingInterruptedByLifecycle && recorder.recordingState != AttendiRecorder.RecordingState.Recording) {
+                    recordingInterruptedByLifecycle = false
+                    coroutineScope.launch {
+                        recorder.startRecording()
+                    }
                 }
             }
 
