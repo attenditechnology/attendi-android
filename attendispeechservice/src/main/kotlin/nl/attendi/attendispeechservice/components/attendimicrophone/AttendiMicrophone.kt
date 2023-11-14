@@ -108,13 +108,6 @@ val LocalMicrophoneState =
 val LocalMicrophoneUIState =
     compositionLocalOf<MicrophoneUIState> { error("No MicrophoneUIState found!") }
 
-val RecorderRecordingStateSaver = run {
-    val recordingStateKey = "recordingState"
-
-    mapSaver(save = { mapOf(recordingStateKey to it.name) },
-        restore = { AttendiRecorder.RecordingState.valueOf(it[recordingStateKey] as String) })
-}
-
 /**
  * The [AttendiMicrophone] is a button that can be used to record audio and then perform tasks
  * with that audio, such as transcription. Recording is started by clicking the button, and
@@ -223,10 +216,6 @@ fun AttendiMicrophone(
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult(),
             onResult = {})
-
-    // Used so that we don't call some LaunchEffect functions on first render. Only when an
-    // observed state variable's value actually changes.
-    var isFirstRender by rememberSaveable { mutableStateOf(true) }
 
     // Used so we can fire a callback only on the first interaction with the microphone.
     var firstClickHappened by rememberSaveable { mutableStateOf(false) }

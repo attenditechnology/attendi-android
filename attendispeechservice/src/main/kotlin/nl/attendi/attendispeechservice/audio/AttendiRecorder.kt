@@ -19,11 +19,9 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
@@ -46,32 +44,13 @@ private val bufferSize = if (minBufferSize <= 1) 2560 else 2 * minBufferSize
 /**
  * Wraps the lower-level `AudioRecord` APIs to provide a convenient interface for recording audio
  * from the device. Currently the audio samples are sampled at a sample rate of 16KHz, and represented as
- * 16-bit signed integers. The samples are accumulated on the filesystem in [bufferFile].
+ * 16-bit signed integers. The samples are accumulated in a file at location [AttendiRecorder.bufferFile].
  */
 @SuppressLint("MissingPermission")
-class AttendiRecorder(
-    val bufferFile: File,
-    recordingState: RecordingState = RecordingState.Stopped
-) {
+class AttendiRecorder(private val bufferFile: File) {
     enum class RecordingState {
         Recording, Stopped
     }
-
-    init {
-        println("initializing new AttendiRecorder instance with file=${bufferFile.absolutePath} and recordingState=$recordingState")
-    }
-
-    var recordingState: RecordingState = recordingState
-        set(value) {
-            field = value
-            println("setting `recorder.recordingState` to $value")
-            for (callback in recordingStateCallbacks) {
-                // TODO: way to launch the callback in a non-blocking way?
-                runBlocking {
-                    callback(value)
-                }
-            }
-        }
 
     /**
      * The `AudioRecord` instance (Android low-level recording API) used to record audio.
@@ -92,6 +71,9 @@ class AttendiRecorder(
     // The recorder's buffer is currently implemented as a file. When recording audio, we write
     // the audio samples using this output stream.
     private var bufferFileOutputStream: FileOutputStream? = null
+
+    var recordingState: RecordingState = RecordingState.Stopped
+        private set
 
     /**
      * Start recording audio. The audio samples are sampled at a sample rate of 16KHz,
@@ -115,7 +97,6 @@ class AttendiRecorder(
             recordAudioJob = launch(Dispatchers.Default) {
                 while (true) {
                     val readSize = audioRecord?.read(temporaryAudioBuffer, 0, bufferSize) ?: 0
-                    println("recording audio, readSize=$readSize")
                     if (readSize <= 0) continue
 
                     val samples = temporaryAudioBuffer.toList().take(readSize)
@@ -128,7 +109,7 @@ class AttendiRecorder(
                         callback(newSignalEnergy)
                     }
 
-                    val byteArray = shortListToByteArray(samples)
+                    val byteArray = shortsToByteArray(samples)
                     bufferFileOutputStream?.let {
                         withContext(Dispatchers.IO) {
                             it.write(byteArray)
@@ -139,13 +120,16 @@ class AttendiRecorder(
         }
     }
 
+    /**
+     * Get the current buffer of audio samples.
+     */
     val buffer: List<Short>
         get() {
             if (!bufferFile.exists()) return emptyList()
 
             return FileInputStream(bufferFile).use {
                 val bytes = it.readBytes()
-                byteArrayToShortList(bytes)
+                byteArrayToShorts(bytes)
             }
         }
 
@@ -177,8 +161,6 @@ class AttendiRecorder(
 
     private var signalEnergyCallbacks: MutableList<suspend (Double) -> Unit> = mutableListOf()
     private var audioFrameCallbacks: MutableList<suspend (List<Short>) -> Unit> = mutableListOf()
-    private var recordingStateCallbacks: MutableList<suspend (RecordingState) -> Unit> =
-        mutableListOf()
 
     /**
      * Register a callback that will be called when the signal energy (a measure of the volume)
@@ -203,16 +185,6 @@ class AttendiRecorder(
         audioFrameCallbacks.add(callback)
         return { audioFrameCallbacks.remove(callback) }
     }
-
-    /**
-     * Register a callback that will be called when the recorder's [recordingState] changes.
-     *
-     * @return A function that can be used to remove the added callback.
-     */
-    fun onRecordingState(callback: suspend (RecordingState) -> Unit): () -> Unit {
-        recordingStateCallbacks.add(callback)
-        return { recordingStateCallbacks.remove(callback) }
-    }
 }
 
 /**
@@ -223,18 +195,19 @@ fun rootMeanSquare(samples: List<Short>): Double {
     return sqrt(sum / samples.size)
 }
 
-private fun byteArrayToShortList(byteArray: ByteArray): List<Short> {
+// Assumes the byte array contains 16-bit signed integers.
+private fun byteArrayToShorts(byteArray: ByteArray): List<Short> {
     return byteArray.asList().chunked(2).asSequence()
         .map { ((it[0].toInt() and 0xFF) shl 8) or (it[1].toInt() and 0xFF) }.map { it.toShort() }
         .toList()
 }
 
-private fun shortListToByteArray(shortList: List<Short>): ByteArray {
+private fun shortsToByteArray(shorts: List<Short>): ByteArray {
     // Each Short is 2 bytes
-    val byteArray = ByteArray(shortList.size * 2)
+    val byteArray = ByteArray(shorts.size * 2)
 
-    for (i in shortList.indices) {
-        val shortValue = shortList[i]
+    for (i in shorts.indices) {
+        val shortValue = shorts[i]
         // Most significant byte
         byteArray[i * 2] = (shortValue.toInt() shr 8).toByte()
 
