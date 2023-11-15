@@ -22,7 +22,7 @@ import nl.attendi.attendispeechservice.components.attendimicrophone.MicrophoneUI
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-const val startNotificationTimeoutMilliseconds: Long = 2000
+private const val START_NOTIFICATION_TIMEOUT_MILLISECONDS: Long = 2000
 
 /**
  * Play sounds at certain points of the microphone component's lifecycle to give more feedback
@@ -45,26 +45,7 @@ class AudioNotificationPlugin : AttendiMicrophonePlugin {
 
         state.onBeforeStartRecording {
             val t1 = System.currentTimeMillis()
-
-            // We add a timeout since it's possible that the onCompletionListener is never called,
-            // if something somehow goes wrong with the audio playback.
-            withTimeoutOrNull(startNotificationTimeoutMilliseconds) {
-                suspendCoroutine { continuation ->
-                    if (startNotificationSound == null) continuation.resume(Unit)
-
-                    // We await until the audio has finished playing before starting recording,
-                    // to prevent the recorded audio from containing the notification sound. This was
-                    // leading to some erroneous transcriptions that added an 'o' at the beginning of the
-                    // transcript. This is done here by resuming the coroutine once the audio has finished
-                    // playing.
-                    startNotificationSound?.setOnCompletionListener {
-                        continuation.resume(Unit)
-                    }
-
-                    startNotificationSound?.start()
-                }
-            }
-
+            playStartNotificationSoundWithTimeout()
             val playAudioDuration = System.currentTimeMillis() - t1
 
             // Since playing the notification audio takes some time, we shorten the
@@ -81,6 +62,27 @@ class AudioNotificationPlugin : AttendiMicrophonePlugin {
         //  To do that, we first need to create the `addCommand` and `executeCommand` plugin APIs.
         state.onError { _ ->
             errorNotificationSound?.start()
+        }
+    }
+
+    private suspend fun playStartNotificationSoundWithTimeout() {
+        // We add a timeout since it's possible that the onCompletionListener is never called,
+        // if something somehow goes wrong with the audio playback.
+        withTimeoutOrNull(START_NOTIFICATION_TIMEOUT_MILLISECONDS) {
+            suspendCoroutine { continuation ->
+                if (startNotificationSound == null) continuation.resume(Unit)
+
+                // We await until the audio has finished playing before starting recording,
+                // to prevent the recorded audio from containing the notification sound. This was
+                // leading to some erroneous transcriptions that added an 'o' at the beginning of the
+                // transcript. This is done here by resuming the coroutine once the audio has finished
+                // playing.
+                startNotificationSound?.setOnCompletionListener {
+                    continuation.resume(Unit)
+                }
+
+                startNotificationSound?.start()
+            }
         }
     }
 
