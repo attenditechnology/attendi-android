@@ -70,14 +70,7 @@ class AudioNotificationPlugin : AttendiMicrophonePlugin {
             // Since playing the notification audio takes some time, we shorten the
             // delay before showing the recording screen by the same amount of time. Otherwise the
             // user would wait longer than necessary before seeing the recording UI.
-            state.shortenShowRecordingDelayByMilliseconds = playAudioDuration.toInt()
-        }
-
-        state.onUIState { uiState ->
-            if (uiState == MicrophoneUIState.Recording) {
-                // Reset the delay to 0, just to clean up after ourselves.
-                state.shortenShowRecordingDelayByMilliseconds = 0
-            }
+            state.shortenShowRecordingDelayByMilliseconds += playAudioDuration.toInt()
         }
 
         state.onStopRecording {

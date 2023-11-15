@@ -347,6 +347,8 @@ fun AttendiMicrophone(
                 coroutineScope.launch(Dispatchers.IO) {
                     delay(startRecordingDelayMilliseconds)
                     microphoneState.microphoneUIState = MicrophoneUIState.Recording
+
+                    microphoneState.shortenShowRecordingDelayByMilliseconds = 0
                 }
             }
 
