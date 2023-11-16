@@ -93,7 +93,7 @@ enum class MicrophoneUIState {
 }
 
 private const val START_RECORDING_DELAY_MILLISECONDS: Long = 500
-private const val STOP_RECORDING_DELAY_MILLISECONDS: Long = 300
+private const val STOP_RECORDING_DELAY_MILLISECONDS: Long = 200
 
 val LocalMicrophoneState =
     compositionLocalOf<AttendiMicrophoneState> { error("No MicrophoneState found!") }
@@ -166,9 +166,7 @@ fun AttendiMicrophone(
     val context = LocalContext.current
 
     val settings = MicrophoneSettings(
-        size = size,
-        colors = colors,
-        cornerRadius = cornerRadius
+        size = size, colors = colors, cornerRadius = cornerRadius
     )
 
     // TODO: implement showOptions properly
@@ -342,10 +340,15 @@ fun AttendiMicrophone(
                     callback()
                 }
 
+                val startRecordingDelayMilliseconds =
+                    START_RECORDING_DELAY_MILLISECONDS - microphoneState.shortenShowRecordingDelayByMilliseconds
+
                 // simulate loading time before recording
                 coroutineScope.launch(Dispatchers.IO) {
-                    delay(START_RECORDING_DELAY_MILLISECONDS)
+                    delay(startRecordingDelayMilliseconds)
                     microphoneState.microphoneUIState = MicrophoneUIState.Recording
+
+                    microphoneState.shortenShowRecordingDelayByMilliseconds = 0
                 }
             }
 
@@ -379,6 +382,10 @@ fun AttendiMicrophone(
         delay(STOP_RECORDING_DELAY_MILLISECONDS)
 
         recorder.stopRecording()
+
+        for (callback in microphoneState.stopRecordingCallbacks) {
+            callback()
+        }
 
         val wav = pcmToWav(recorder.buffer, sampleRate = AUDIO_SAMPLE_RATE)
         recorder.clearBuffer()
@@ -753,6 +760,14 @@ class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor
         set(value) {
             _animatedMicrophoneFillLevel = value
         }
+
+    // ========== Other ==========
+
+    /**
+     * The component already starts recording, only showing the actual recording UI after
+     * a slight delay. This variable can be used to shorten that delay.
+     */
+    var shortenShowRecordingDelayByMilliseconds = 0
 }
 
 typealias AudioTask = suspend (ByteArray) -> Unit
@@ -944,7 +959,8 @@ fun RecordingView() {
 
             // Make the animation a bit smoother by tweening between the current and the target value
             val animatedMicrophoneFillPercentage: Float by animateFloatAsState(
-                targetValue = microphoneFillPercentage.toFloat(), animationSpec = tween(150),
+                targetValue = microphoneFillPercentage.toFloat(),
+                animationSpec = tween(150),
                 label = "attendiMicrophoneFillPercentage"
             )
 
@@ -954,7 +970,8 @@ fun RecordingView() {
                     color = foregroundColor,
                     start = Offset((0.5 * maxWidth).toPx(), (0.61 * maxHeight).toPx()),
                     end = Offset(
-                        (0.5 * maxWidth).toPx(), (animatedMicrophoneFillPercentage * maxHeight).toPx()
+                        (0.5 * maxWidth).toPx(),
+                        (animatedMicrophoneFillPercentage * maxHeight).toPx()
                     ),
                     strokeWidth = (0.33 * maxWidth).toPx(),
                 )
