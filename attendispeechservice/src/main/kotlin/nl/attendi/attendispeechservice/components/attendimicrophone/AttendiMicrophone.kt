@@ -95,7 +95,8 @@ enum class MicrophoneUIState {
 }
 
 private const val START_RECORDING_DELAY_MILLISECONDS: Long = 500
-private const val STOP_RECORDING_DELAY_MILLISECONDS: Long = 300
+private const val STOP_RECORDING_DELAY_MILLISECONDS: Long = 200
+
 private const val AUDIO_BUFFER_FILE_PREFIX = "attendi_recorder_samples_"
 
 // Delete audio files that are older than 20 minutes. These are files that were not properly
@@ -377,10 +378,15 @@ fun AttendiMicrophone(
                     callback()
                 }
 
+                val startRecordingDelayMilliseconds =
+                    START_RECORDING_DELAY_MILLISECONDS - microphoneState.shortenShowRecordingDelayByMilliseconds
+
                 // simulate loading time before recording
                 coroutineScope.launch(Dispatchers.IO) {
-                    delay(START_RECORDING_DELAY_MILLISECONDS)
+                    delay(startRecordingDelayMilliseconds)
                     microphoneState.microphoneUIState = MicrophoneUIState.Recording
+
+                    microphoneState.shortenShowRecordingDelayByMilliseconds = 0
                 }
             }
 
@@ -414,6 +420,10 @@ fun AttendiMicrophone(
         delay(STOP_RECORDING_DELAY_MILLISECONDS)
 
         recorder.stopRecording()
+
+        for (callback in microphoneState.stopRecordingCallbacks) {
+            callback()
+        }
 
         val wav = pcmToWav(recorder.buffer, sampleRate = AUDIO_SAMPLE_RATE)
         recorder.clearBuffer()
@@ -799,6 +809,14 @@ class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor
         set(value) {
             _animatedMicrophoneFillLevel = value
         }
+
+    // ========== Other ==========
+
+    /**
+     * The component already starts recording, only showing the actual recording UI after
+     * a slight delay. This variable can be used to shorten that delay.
+     */
+    var shortenShowRecordingDelayByMilliseconds = 0
 }
 
 typealias AudioTask = suspend (ByteArray) -> Unit

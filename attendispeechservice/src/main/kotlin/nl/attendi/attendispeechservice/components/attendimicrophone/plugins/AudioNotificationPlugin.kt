@@ -15,9 +15,14 @@
 package nl.attendi.attendispeechservice.components.attendimicrophone.plugins
 
 import android.media.MediaPlayer
+import kotlinx.coroutines.withTimeoutOrNull
 import nl.attendi.attendispeechservice.R
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import nl.attendi.attendispeechservice.components.attendimicrophone.MicrophoneUIState
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+
+private const val START_NOTIFICATION_TIMEOUT_MILLISECONDS: Long = 2000
 
 /**
  * Play sounds at certain points of the microphone component's lifecycle to give more feedback
@@ -38,13 +43,18 @@ class AudioNotificationPlugin : AttendiMicrophonePlugin {
             errorNotificationSound = MediaPlayer.create(state.context, R.raw.error_notification)
         }
 
-        state.onUIState { uiState ->
-            if (uiState == MicrophoneUIState.Recording) {
-                startNotificationSound?.start()
-            }
+        state.onBeforeStartRecording {
+            val t1 = System.currentTimeMillis()
+            playStartNotificationSoundWithTimeout()
+            val playAudioDuration = System.currentTimeMillis() - t1
+
+            // Since playing the notification audio takes some time, we shorten the
+            // delay before showing the recording screen by the same amount of time. Otherwise the
+            // user would wait longer than necessary before seeing the recording UI.
+            state.shortenShowRecordingDelayByMilliseconds += playAudioDuration.toInt()
         }
 
-        state.onBeforeStopRecording {
+        state.onStopRecording {
             stopNotificationSound?.start()
         }
 
@@ -52,6 +62,27 @@ class AudioNotificationPlugin : AttendiMicrophonePlugin {
         //  To do that, we first need to create the `addCommand` and `executeCommand` plugin APIs.
         state.onError { _ ->
             errorNotificationSound?.start()
+        }
+    }
+
+    private suspend fun playStartNotificationSoundWithTimeout() {
+        // We add a timeout since it's possible that the onCompletionListener is never called,
+        // if something somehow goes wrong with the audio playback.
+        withTimeoutOrNull(START_NOTIFICATION_TIMEOUT_MILLISECONDS) {
+            suspendCoroutine { continuation ->
+                if (startNotificationSound == null) continuation.resume(Unit)
+
+                // We await until the audio has finished playing before starting recording,
+                // to prevent the recorded audio from containing the notification sound. This was
+                // leading to some erroneous transcriptions that added an 'o' at the beginning of the
+                // transcript. This is done here by resuming the coroutine once the audio has finished
+                // playing.
+                startNotificationSound?.setOnCompletionListener {
+                    continuation.resume(Unit)
+                }
+
+                startNotificationSound?.start()
+            }
         }
     }
 
