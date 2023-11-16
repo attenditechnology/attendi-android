@@ -26,6 +26,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.math.sqrt
 
 const val AUDIO_SAMPLE_RATE = 16000
@@ -197,25 +199,12 @@ fun rootMeanSquare(samples: List<Short>): Double {
 
 // Assumes the byte array contains 16-bit signed integers.
 private fun byteArrayToShorts(byteArray: ByteArray): List<Short> {
-    return byteArray.asList().chunked(2).asSequence()
-        .map { ((it[0].toInt() and 0xFF) shl 8) or (it[1].toInt() and 0xFF) }.map { it.toShort() }
-        .toList()
+    val byteBuffer = ByteBuffer.wrap(byteArray).order(ByteOrder.BIG_ENDIAN)
+    return generateSequence { if (byteBuffer.hasRemaining()) byteBuffer.short else null }.toList()
 }
 
 private fun shortsToByteArray(shorts: List<Short>): ByteArray {
-    // Each Short is 2 bytes
-    val byteArray = ByteArray(shorts.size * 2)
-
-    for (i in shorts.indices) {
-        val shortValue = shorts[i]
-        // Most significant byte
-        byteArray[i * 2] = (shortValue.toInt() shr 8).toByte()
-
-        // Least significant byte
-        byteArray[i * 2 + 1] = shortValue.toByte()
-    }
-
-    return byteArray
+    val byteBuffer = ByteBuffer.allocate(shorts.size * 2).order(ByteOrder.BIG_ENDIAN)
+    shorts.forEach { byteBuffer.putShort(it) }
+    return byteBuffer.array()
 }
-
-
