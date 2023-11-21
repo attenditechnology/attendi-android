@@ -60,7 +60,6 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.mapSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -405,36 +404,6 @@ fun AttendiMicrophone(
         }
     }
 
-    suspend fun stop() {
-        for (callback in microphoneState.beforeStopRecordingCallbacks) {
-            callback()
-        }
-
-        microphoneState.microphoneUIState = MicrophoneUIState.Processing
-
-        // The last word is oftentimes not correctly transcribed.
-        // This might be a result of a user still uttering the last syllable
-        // while already pressing the stop button. The timeout allows recording
-        // for just a bit longer before stopping the recorder, so that we also get
-        // the last bit of spoken audio.
-        delay(STOP_RECORDING_DELAY_MILLISECONDS)
-
-        recorder.stopRecording()
-
-        for (callback in microphoneState.stopRecordingCallbacks) {
-            callback()
-        }
-
-        val wav = pcmToWav(recorder.buffer, sampleRate = AUDIO_SAMPLE_RATE)
-        recorder.clearBuffer()
-
-        for (audioTask in microphoneState.activeAudioTasks) {
-            audioTask(wav)
-        }
-
-        microphoneState.microphoneUIState = MicrophoneUIState.NotStartedRecording
-    }
-
     suspend fun handleErrors(toRun: suspend () -> Unit) {
         try {
             toRun()
@@ -465,7 +434,7 @@ fun AttendiMicrophone(
 
             MicrophoneUIState.Recording -> {
                 coroutineScope.launch {
-                    handleErrors { stop() }
+                    handleErrors { microphoneState.stop() }
                 }
             }
 
@@ -653,6 +622,38 @@ class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor
      */
     fun onAudioFrames(callback: suspend (List<Short>) -> Unit): () -> Unit {
         return recorder.onAudioFrames(callback)
+    }
+
+    // ========= Behavior =============
+
+    suspend fun stop(delayMilliseconds: Long = STOP_RECORDING_DELAY_MILLISECONDS) {
+        for (callback in beforeStopRecordingCallbacks) {
+            callback()
+        }
+
+        microphoneUIState = MicrophoneUIState.Processing
+
+        // The last word is oftentimes not correctly transcribed.
+        // This might be a result of a user still uttering the last syllable
+        // while already pressing the stop button. The timeout allows recording
+        // for just a bit longer before stopping the recorder, so that we also get
+        // the last bit of spoken audio.
+        if (delayMilliseconds > 0) delay(STOP_RECORDING_DELAY_MILLISECONDS)
+
+        recorder.stopRecording()
+
+        for (callback in stopRecordingCallbacks) {
+            callback()
+        }
+
+        val wav = pcmToWav(recorder.buffer, sampleRate = AUDIO_SAMPLE_RATE)
+        recorder.clearBuffer()
+
+        for (audioTask in activeAudioTasks) {
+            audioTask(wav)
+        }
+
+        microphoneUIState = MicrophoneUIState.NotStartedRecording
     }
 
     // ========= Bottom sheet =========
