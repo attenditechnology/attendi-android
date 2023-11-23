@@ -29,7 +29,9 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.Settings
+import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.CubicBezierEasing
@@ -60,7 +62,6 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.mapSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +79,7 @@ import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.times
 import androidx.lifecycle.Lifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.*
 import nl.attendi.attendispeechservice.R
@@ -161,7 +163,9 @@ val LocalMicrophoneUIState =
  * to return results.
  */
 @SuppressLint("MissingPermission")
-@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class
+)
 @Composable
 fun AttendiMicrophone(
     modifier: Modifier = Modifier,
@@ -214,9 +218,9 @@ fun AttendiMicrophone(
     }
 
     // Used to launch activities, such as going to the settings to grant the microphone permission.
-    val launcher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult(),
-            onResult = {})
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+        onResult = {})
 
     // Used so we can fire a callback only on the first interaction with the microphone.
     var firstClickHappened by rememberSaveable { mutableStateOf(false) }
@@ -225,12 +229,16 @@ fun AttendiMicrophone(
         mutableStateOf(MicrophoneUIState.NotStartedRecording)
     }
 
+    val recordAudioPermissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
+
     // The state is used so that we have a hook-in point for which plugins can perform some
     // operations to change the state of the microphone.
     val microphoneState by remember {
         mutableStateOf(
             AttendiMicrophoneState(
                 microphoneUIState = microphoneUIState,
+                recordAudioPermissionState = recordAudioPermissionState,
+                launcher = launcher,
                 onEvent = onEvent,
                 onResult = onResult,
                 context = context,
@@ -304,136 +312,15 @@ fun AttendiMicrophone(
     // Handle backgrounding and foregrounding of the app. The current intended behavior is that
     // recording is paused when the app is backgrounded, and resumed when the app is foregrounded.
     OnLifecycleEvent { _, event ->
-        when (event) {
-            Lifecycle.Event.ON_PAUSE -> {
-                if (recorder.recordingState == AttendiRecorder.RecordingState.Recording) {
-                    coroutineScope.launch {
-                        recorder.stopRecording()
-                    }
-                    recordingInterruptedByLifecycle = true
-                }
-            }
-
-            Lifecycle.Event.ON_RESUME -> {
-                if (recordingInterruptedByLifecycle && recorder.recordingState != AttendiRecorder.RecordingState.Recording) {
-                    recordingInterruptedByLifecycle = false
-                    coroutineScope.launch {
-                        recorder.startRecording()
-                    }
-                }
-            }
-
-            else -> {}
-        }
-    }
-
-    val recordAudioPermissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
-
-    var askPermissionCount by rememberSaveable { mutableStateOf(0) }
-
-    // This refers not to the native Android permission dialog, but to the dialog that is shown
-    // when the user has denied permission multiple times. This dialog explains why the permission
-    // is needed and explains that the user has to go to the settings to grant the permission.
-    fun showPermissionRequestDialog() {
-        microphoneState.vibrate()
-        microphoneState.showDialog {
-            AlertDialog(onDismissRequest = { microphoneState.isDialogOpen = false },
-                title = { Text(context.getString(R.string.no_microphone_permission_dialog_title)) },
-                text = { Text(context.getString(R.string.no_microphone_permission_dialog_body)) },
-                dismissButton = {
-                    Button(onClick = {
-                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                        val uri: Uri = Uri.fromParts("package", context.packageName, null)
-                        intent.data = uri
-                        launcher.launch(intent)
-                        microphoneState.isDialogOpen = false
-                    }) {
-                        Text(context.getString(R.string.no_microphone_permission_dialog_go_to_settings))
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = {
-                        microphoneState.isDialogOpen = false
-                    }) {
-                        Text("OK")
-                    }
-                })
-        }
-    }
-
-    suspend fun start() {
-        when {
-            recordAudioPermissionState.hasPermission -> {
-                microphoneState.microphoneUIState = MicrophoneUIState.LoadingBeforeRecording
-
-                for (callback in microphoneState.beforeStartRecordingCallbacks) {
-                    callback()
-                }
-
-                coroutineScope.launch {
-                    recorder.startRecording()
-                }
-
-                for (callback in microphoneState.startRecordingCallbacks) {
-                    callback()
-                }
-
-                val startRecordingDelayMilliseconds =
-                    START_RECORDING_DELAY_MILLISECONDS - microphoneState.shortenShowRecordingDelayByMilliseconds
-
-                // simulate loading time before recording
-                coroutineScope.launch(Dispatchers.IO) {
-                    delay(startRecordingDelayMilliseconds)
-                    microphoneState.microphoneUIState = MicrophoneUIState.Recording
-
-                    microphoneState.shortenShowRecordingDelayByMilliseconds = 0
-                }
-            }
-
-            // The rationale is false when asking permission the first time, true when asking
-            // permission the second time (so after denying for the first time), and false again
-            // when asking permission the third time. This makes it very hard to determine when
-            // to show the rationale dialog. We use a counter to keep track of how many times
-            // we've asked for permission, and only show the rationale dialog when we've asked
-            // for permission more than once and `shouldShowRationale` returns false.
-            !recordAudioPermissionState.shouldShowRationale && askPermissionCount > 0 -> showPermissionRequestDialog()
-
-            else -> {
-                recordAudioPermissionState.launchPermissionRequest()
-                askPermissionCount++
+        for (callback in microphoneState.lifecycleCallbacks) {
+            // TODO: is there a way we can prevent using GlobalScope here?
+            // When using `coroutineScope`, sometimes the callbacks are not called here.
+            GlobalScope.launch {
+                callback(event)
             }
         }
     }
 
-    suspend fun stop() {
-        for (callback in microphoneState.beforeStopRecordingCallbacks) {
-            callback()
-        }
-
-        microphoneState.microphoneUIState = MicrophoneUIState.Processing
-
-        // The last word is oftentimes not correctly transcribed.
-        // This might be a result of a user still uttering the last syllable
-        // while already pressing the stop button. The timeout allows recording
-        // for just a bit longer before stopping the recorder, so that we also get
-        // the last bit of spoken audio.
-        delay(STOP_RECORDING_DELAY_MILLISECONDS)
-
-        recorder.stopRecording()
-
-        for (callback in microphoneState.stopRecordingCallbacks) {
-            callback()
-        }
-
-        val wav = pcmToWav(recorder.buffer, sampleRate = AUDIO_SAMPLE_RATE)
-        recorder.clearBuffer()
-
-        for (audioTask in microphoneState.activeAudioTasks) {
-            audioTask(wav)
-        }
-
-        microphoneState.microphoneUIState = MicrophoneUIState.NotStartedRecording
-    }
 
     suspend fun handleErrors(toRun: suspend () -> Unit) {
         try {
@@ -459,13 +346,13 @@ fun AttendiMicrophone(
         when (microphoneUIState) {
             MicrophoneUIState.NotStartedRecording -> {
                 coroutineScope.launch {
-                    handleErrors { start() }
+                    handleErrors { microphoneState.start() }
                 }
             }
 
             MicrophoneUIState.Recording -> {
                 coroutineScope.launch {
-                    handleErrors { stop() }
+                    handleErrors { microphoneState.stop() }
                 }
             }
 
@@ -514,8 +401,12 @@ fun AttendiMicrophone(
     }
 }
 
-class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor(
+class AttendiMicrophoneState @OptIn(
+    ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class
+) constructor(
     microphoneUIState: MicrophoneUIState = MicrophoneUIState.NotStartedRecording,
+    private val launcher: ManagedActivityResultLauncher<Intent, ActivityResult>,
+    private val recordAudioPermissionState: PermissionState,
     val onEvent: (String, Any) -> Unit,
     val onResult: (String) -> Unit,
     val context: Context,
@@ -526,7 +417,8 @@ class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor
     val settings: MicrophoneSettings = MicrophoneSettings(),
     val recorder: AttendiRecorder,
 ) {
-    // var microphoneUIState by mutableStateOf(MicrophoneUIState.NotStartedRecording)
+    private var askPermissionCount: Int = 0
+
     var microphoneUIState: MicrophoneUIState = microphoneUIState
         set(value) {
             field = value
@@ -561,6 +453,7 @@ class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor
     var beforeStopRecordingCallbacks: MutableList<suspend () -> Unit> = mutableListOf()
     var stopRecordingCallbacks: MutableList<suspend () -> Unit> = mutableListOf()
     var errorCallbacks: MutableList<suspend (Exception) -> Unit> = mutableListOf()
+    var lifecycleCallbacks: MutableList<suspend (Lifecycle.Event) -> Unit> = mutableListOf()
 
     /**
      * Register a callback that will be called before recording of audio starts.
@@ -634,6 +527,24 @@ class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor
     }
 
     /**
+     * Register a callback that will be called when the underlying activity undergoes a lifecycle
+     * event such as `Lifecycle.Event.ON_START`, `Lifecycle.Event.ON_RESUME`, etc.
+     *
+     * CAUTION: Take special care with the `ON_CREATE`, `ON_START`, and `ON_RESUME` events. Currently,
+     * when the screen is rotated, all callbacks added using this function are cleared, since the
+     * `microphoneState` is not persisted over rotations. This means that these events
+     * will *NOT* be called after a screen rotation. This is a limitation of the current implementation.
+     *
+     * @return A function that can be used to remove the added callback.
+     */
+    fun onLifecycle(callback: suspend (Lifecycle.Event) -> Unit): () -> Unit {
+        lifecycleCallbacks.add(callback)
+        return { lifecycleCallbacks.remove(callback) }
+    }
+
+    // ========= Recorder callbacks =============
+
+    /**
      * Register a callback that will be called when the signal energy (a measure of the volume)
      * changes. We currently measure the signal energy using RMS.
      *
@@ -653,6 +564,125 @@ class AttendiMicrophoneState @OptIn(ExperimentalMaterial3Api::class) constructor
      */
     fun onAudioFrames(callback: suspend (List<Short>) -> Unit): () -> Unit {
         return recorder.onAudioFrames(callback)
+    }
+
+    // ========= Behavior =============
+
+    @OptIn(ExperimentalPermissionsApi::class)
+    suspend fun start(delayMilliseconds: Long = START_RECORDING_DELAY_MILLISECONDS) {
+        when {
+            recordAudioPermissionState.hasPermission -> {
+                microphoneUIState = MicrophoneUIState.LoadingBeforeRecording
+
+                for (callback in beforeStartRecordingCallbacks) {
+                    callback()
+                }
+
+                coroutineScope.launch {
+                    recorder.startRecording()
+                }
+
+                for (callback in startRecordingCallbacks) {
+                    callback()
+                }
+
+                val startRecordingDelayMilliseconds =
+                    delayMilliseconds - shortenShowRecordingDelayByMilliseconds
+
+                // simulate loading time before recording
+                coroutineScope.launch(Dispatchers.IO) {
+                    delay(startRecordingDelayMilliseconds)
+                    microphoneUIState = MicrophoneUIState.Recording
+
+                    shortenShowRecordingDelayByMilliseconds = 0
+                }
+            }
+
+            // The rationale is false when asking permission the first time, true when asking
+            // permission the second time (so after denying for the first time), and false again
+            // when asking permission the third time. This makes it very hard to determine when
+            // to show the rationale dialog. We use a counter to keep track of how many times
+            // we've asked for permission, and only show the rationale dialog when we've asked
+            // for permission more than once and `shouldShowRationale` returns false.
+            !recordAudioPermissionState.shouldShowRationale && askPermissionCount > 0 -> showPermissionRequestDialog()
+
+            else -> {
+                recordAudioPermissionState.launchPermissionRequest()
+                askPermissionCount++
+            }
+        }
+    }
+
+    // This refers not to the native Android permission dialog, but to the dialog that is shown
+    // when the user has denied permission multiple times. This dialog explains why the permission
+    // is needed and explains that the user has to go to the settings to grant the permission.
+    private fun showPermissionRequestDialog() {
+        vibrate()
+        showDialog {
+            AlertDialog(onDismissRequest = { isDialogOpen = false },
+                title = { Text(context.getString(R.string.no_microphone_permission_dialog_title)) },
+                text = { Text(context.getString(R.string.no_microphone_permission_dialog_body)) },
+                dismissButton = {
+                    Button(onClick = {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        val uri: Uri = Uri.fromParts("package", context.packageName, null)
+                        intent.data = uri
+                        launcher.launch(intent)
+                        isDialogOpen = false
+                    }) {
+                        Text(context.getString(R.string.no_microphone_permission_dialog_go_to_settings))
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        isDialogOpen = false
+                    }) {
+                        Text("OK")
+                    }
+                })
+        }
+    }
+
+    suspend fun stop(
+        delayMilliseconds: Long = STOP_RECORDING_DELAY_MILLISECONDS, runAudioTasks: Boolean = true
+    ) {
+        if (microphoneUIState != MicrophoneUIState.Recording) return
+
+        for (callback in beforeStopRecordingCallbacks) {
+            callback()
+        }
+
+        microphoneUIState = MicrophoneUIState.Processing
+
+        // The last word is oftentimes not correctly transcribed.
+        // This might be a result of a user still uttering the last syllable
+        // while already pressing the stop button. The timeout allows recording
+        // for just a bit longer before stopping the recorder, so that we also get
+        // the last bit of spoken audio.
+        if (delayMilliseconds > 0) delay(delayMilliseconds)
+
+        recorder.stopRecording()
+
+        for (callback in stopRecordingCallbacks) {
+            callback()
+        }
+
+        val wav = pcmToWav(recorder.buffer, sampleRate = AUDIO_SAMPLE_RATE)
+        recorder.clearBuffer()
+
+        if (runAudioTasks) {
+            for (audioTask in activeAudioTasks) {
+                try {
+                    audioTask(wav)
+                } catch (e: Exception) {
+                    for (errorCallback in errorCallbacks) {
+                        errorCallback(e)
+                    }
+                }
+            }
+        }
+
+        microphoneUIState = MicrophoneUIState.NotStartedRecording
     }
 
     // ========= Bottom sheet =========
@@ -1133,9 +1163,13 @@ fun AnimatedRectangle(index: Int, color: Color) {
  * for the preview composable functions.
  */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 private fun getPreviewMicrophoneState(): AttendiMicrophoneState {
     return AttendiMicrophoneState(
+        launcher = rememberLauncherForActivityResult(
+            ActivityResultContracts.StartActivityForResult(),
+            onResult = {}),
+        recordAudioPermissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO),
         onEvent = { _, _ -> },
         onResult = { },
         context = LocalContext.current,
@@ -1148,6 +1182,6 @@ private fun getPreviewMicrophoneState(): AttendiMicrophoneState {
             File(
                 LocalContext.current.filesDir, "attendi_recorder_samples_${UUID.randomUUID()}"
             )
-        ),
+        )
     )
 }

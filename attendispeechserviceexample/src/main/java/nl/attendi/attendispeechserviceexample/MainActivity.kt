@@ -35,7 +35,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,6 +44,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +55,10 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import nl.attendi.attendispeechservice.client.ModelType
 import nl.attendi.attendispeechservice.client.TranscribeAPIConfig
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
@@ -128,27 +133,30 @@ fun Modifier.conditional(condition: Boolean, modifier: Modifier.() -> Modifier):
     }
 }
 
+class MicrophoneScreenViewModel : ViewModel() {
+}
+
 @Composable
-fun HoveringMicrophoneScreen() {
-    var text1 by remember { mutableStateOf("") }
-    var text2 by remember { mutableStateOf("") }
-    var text3 by remember { mutableStateOf("") }
-    var text4 by remember { mutableStateOf("") }
+fun HoveringMicrophoneScreen(
+    viewModel: MicrophoneScreenViewModel = MicrophoneScreenViewModel()
+) {
+    var text1 by rememberSaveable { mutableStateOf("") }
+    var text2 by rememberSaveable { mutableStateOf("") }
+    var text3 by rememberSaveable { mutableStateOf("") }
+    var text4 by rememberSaveable { mutableStateOf("") }
 
     val focusRequester1 = remember { FocusRequester() }
     val focusRequester2 = remember { FocusRequester() }
     val focusRequester3 = remember { FocusRequester() }
     val focusRequester4 = remember { FocusRequester() }
 
-    // var microphoneState by remember { mutableStateOf<AttendiMicrophoneState?>(null) }
     var microphoneUIState by remember { mutableStateOf<MicrophoneUIState?>(null) }
 
     var focusedTextField by remember { mutableStateOf(0) }
     val targetTextField = if (focusedTextField == 0) 1 else focusedTextField
 
     fun shouldDisplayMicrophoneTarget(textField: Int) =
-        ((microphoneUIState == MicrophoneUIState.Recording || microphoneUIState == MicrophoneUIState.Processing)
-                && targetTextField == textField)
+        ((microphoneUIState == MicrophoneUIState.Recording || microphoneUIState == MicrophoneUIState.Processing) && targetTextField == textField)
 
     fun displayMicrophoneTarget(textField: Int) =
         Modifier.conditional(shouldDisplayMicrophoneTarget(textField)) {
@@ -167,8 +175,7 @@ fun HoveringMicrophoneScreen() {
 
             Column {
                 Text("S:")
-                TextField(
-                    value = text1,
+                TextField(value = text1,
                     onValueChange = { text1 = it },
                     minLines = 5,
                     modifier = Modifier
@@ -177,8 +184,7 @@ fun HoveringMicrophoneScreen() {
                         .fillMaxWidth()
                         .height(100.dp)
                         .padding(0.dp)
-                        .then(displayMicrophoneTarget(1))
-                )
+                        .then(displayMicrophoneTarget(1)))
                 if (shouldDisplayMicrophoneTarget(1)) Text("Aan het opnemen..", color = Color.Red)
             }
 
@@ -252,17 +258,31 @@ fun HoveringMicrophoneScreen() {
                     activeBackgroundColor = pinkColor,
                     activeForegroundColor = Color.White,
                 ),
-                plugins = listOf(
-                    AttendiErrorPlugin(),
+                plugins = listOf(AttendiErrorPlugin(),
                     AttendiTranscribePlugin(apiConfig = exampleAPIConfig),
                     object : AttendiMicrophonePlugin {
                         override fun activate(state: AttendiMicrophoneState) {
                             state.onUIState {
                                 microphoneUIState = it
                             }
+
+                            state.onLifecycle { event ->
+                                when (event) {
+                                    Lifecycle.Event.ON_PAUSE -> {
+                                        // It is important that we use a coroutineScope that outlives
+                                        // the composable on configuration changes, since coroutineScopes
+                                        // retrieved with `rememberCoroutineScope` are cancelled when
+                                        // the composable is disposed.
+                                        viewModel.viewModelScope.launch {
+                                            state.stop(delayMilliseconds = 0)
+                                        }
+                                    }
+
+                                    else -> {}
+                                }
+                            }
                         }
-                    }
-                ),
+                    }),
                 onResult = {
                     when (focusedTextField) {
                         1 -> text1 = addParagraph(text1, it)
@@ -290,7 +310,6 @@ fun HoveringMicrophoneScreenPreview() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TwoMicrophonesScreen() {
     var text by remember { mutableStateOf("") }
