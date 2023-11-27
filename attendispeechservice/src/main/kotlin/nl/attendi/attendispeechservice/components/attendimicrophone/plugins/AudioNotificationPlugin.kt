@@ -37,9 +37,13 @@ class AudioNotificationPlugin : AttendiMicrophonePlugin {
     override fun activate(state: AttendiMicrophoneState) {
         if (state.silent) return
 
-        state.onFirstClick {
+        if (startNotificationSound == null) {
             startNotificationSound = MediaPlayer.create(state.context, R.raw.start_notification)
+        }
+        if (stopNotificationSound == null) {
             stopNotificationSound = MediaPlayer.create(state.context, R.raw.stop_notification)
+        }
+        if (errorNotificationSound == null) {
             errorNotificationSound = MediaPlayer.create(state.context, R.raw.error_notification)
         }
 
@@ -90,5 +94,9 @@ class AudioNotificationPlugin : AttendiMicrophonePlugin {
         startNotificationSound?.release()
         stopNotificationSound?.release()
         errorNotificationSound?.release()
+
+        startNotificationSound = null
+        stopNotificationSound = null
+        errorNotificationSound = null
     }
 }
