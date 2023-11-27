@@ -219,8 +219,8 @@ fun AttendiMicrophone(
 
     // Used to launch activities, such as going to the settings to grant the microphone permission.
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-        onResult = {})
+            ActivityResultContracts.StartActivityForResult(),
+            onResult = {})
 
     // Used so we can fire a callback only on the first interaction with the microphone.
     var firstClickHappened by rememberSaveable { mutableStateOf(false) }
@@ -261,11 +261,14 @@ fun AttendiMicrophone(
         }
     }
 
-    val defaultPlugins = listOf(
-        AudioNotificationPlugin(),
-        VolumeFeedbackPlugin(),
-    )
-    val allPlugins = defaultPlugins + plugins
+    val allPlugins = remember {
+        val defaultPlugins = listOf(
+            AudioNotificationPlugin(),
+            VolumeFeedbackPlugin(),
+        )
+
+        defaultPlugins + plugins
+    }
 
     LaunchedEffect(Unit) {
         allPlugins.forEach { plugin ->
@@ -302,12 +305,6 @@ fun AttendiMicrophone(
             }
         }
     }
-
-    // Keeps track of whether the recording was interrupted by lifecycle events such as backgrounding or rotation.
-    // This is used to resume recording when the app is foregrounded again. We need it since
-    // `Lifecycle.Event.ON_RESUME` is also called when the composable enters the view, and doesn't
-    // necessarily mean that the recording was interrupted
-    var recordingInterruptedByLifecycle by rememberSaveable { mutableStateOf(false) }
 
     // Handle backgrounding and foregrounding of the app. The current intended behavior is that
     // recording is paused when the app is backgrounded, and resumed when the app is foregrounded.
