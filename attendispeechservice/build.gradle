@@ -74,7 +74,7 @@ afterEvaluate {
                 release(MavenPublication) {
                     groupId = 'nl.attendi'
                     artifactId = 'attendispeechservice'
-                    version = '0.2.2'
+                    version = '0.2.3'
 
                     from components.release
                 }
