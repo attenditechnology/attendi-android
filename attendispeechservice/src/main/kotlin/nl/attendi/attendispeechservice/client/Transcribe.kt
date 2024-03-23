@@ -26,6 +26,7 @@ import java.net.URL
 const val defaultAttendiBaseURL = "https://api.attendi.nl"
 
 const val transcribeEndpoint = "v1/speech/transcribe"
+const val authenticateEndpoint = "v1/identity/authenticate"
 
 /**
  * Transcribe audio using Attendi's transcribe API.
@@ -66,6 +67,44 @@ suspend fun transcribe(
 }
 
 /**
+ * Request an authentication token from Attendi's identity service.
+ */
+suspend fun authenticate(
+    requestBody: AuthenticateRequestBody,
+    customerKey: String,
+    apiBaseURL: String? = null,
+): String? {
+    val apiURL = apiBaseURL ?: defaultAttendiBaseURL
+    val requestBodyEncoded = Json.encodeToString(requestBody)
+
+    return withContext(Dispatchers.IO) { // runs at I/O level and frees the Main thread
+        val url = "$apiURL/$authenticateEndpoint"
+
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.requestMethod = "POST"
+        connection.setRequestProperty("Content-Type", "application/json; utf-8")
+        // Use the customer key to authenticate the request
+        connection.setRequestProperty("x-api-key", customerKey)
+
+        connection.doOutput = true
+        connection.outputStream.use { os ->
+            val writer = OutputStreamWriter(os, "UTF-8")
+            writer.write(requestBodyEncoded)
+            writer.flush()
+        }
+
+        val responseCode = connection.responseCode
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            val jsonResponse = connection.inputStream.bufferedReader().use { it.readText() }
+            val response =
+                Json.decodeFromString(AuthenticationResponse.serializer(), jsonResponse)
+            return@withContext response.token
+        }
+        return@withContext null
+    }
+}
+
+/**
  * Requests to Attendi's transcribe-like APIs usually require the same base request body.
  */
 @Serializable
@@ -91,3 +130,6 @@ data class Config(
 
 @Serializable
 data class TranscriptionResponse(val transcript: String)
+
+@Serializable
+data class AuthenticationResponse(val token: String)

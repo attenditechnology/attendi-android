@@ -44,7 +44,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,6 +66,7 @@ import nl.attendi.attendispeechservice.components.attendimicrophone.MicrophoneUI
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiTranscribePlugin
+import nl.attendi.attendispeechserviceexample.examples.streaming.TwoMicrophonesScreenStreaming
 import nl.attendi.attendispeechserviceexample.ui.theme.AttendiSpeechServiceExampleTheme
 
 class MainActivity : ComponentActivity() {
@@ -95,29 +95,47 @@ val exampleAPIConfig = TranscribeAPIConfig(
 )
 
 enum class Screen {
-    TwoMicrophones, HoveringMicrophone,
+    TwoMicrophones, TwoMicrophonesStreaming, HoveringMicrophone,
 }
 
 @Composable
 fun ExampleApp() {
-    var screen by remember { mutableStateOf(Screen.HoveringMicrophone) }
+    var screen by remember { mutableStateOf(Screen.TwoMicrophonesStreaming) }
 
     Column {
         Row(
             horizontalArrangement = Arrangement.End, modifier = Modifier.padding(horizontal = 16.dp)
         ) {
-            Button(onClick = {
-                screen =
-                    if (screen == Screen.TwoMicrophones) Screen.HoveringMicrophone else Screen.TwoMicrophones
-            }) {
-                Text(if (screen == Screen.TwoMicrophones) "Vul SOAP in" else "Ga terug")
+            if (screen == Screen.TwoMicrophonesStreaming) {
+                Button(onClick = {
+                    screen = Screen.TwoMicrophones
+                }) {
+                    Text("To non-streaming screen")
+                }
+            } else {
+                Button(onClick = {
+                    screen =
+                        if (screen == Screen.TwoMicrophones) Screen.HoveringMicrophone else Screen.TwoMicrophones
+                }) {
+                    Text(
+                        if (screen == Screen.TwoMicrophones) "Vul SOAP in" else "Twee microfoons"
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(onClick = {
+                    screen = Screen.TwoMicrophonesStreaming
+                }) {
+                    Text("To streaming screen")
+                }
             }
         }
 
-        if (screen == Screen.TwoMicrophones) {
-            TwoMicrophonesScreen()
-        } else {
-            HoveringMicrophoneScreen()
+        when (screen) {
+            Screen.TwoMicrophones -> TwoMicrophonesScreen()
+            Screen.TwoMicrophonesStreaming -> TwoMicrophonesScreenStreaming()
+            Screen.HoveringMicrophone -> HoveringMicrophoneScreen()
         }
     }
 }
@@ -133,8 +151,7 @@ fun Modifier.conditional(condition: Boolean, modifier: Modifier.() -> Modifier):
     }
 }
 
-class MicrophoneScreenViewModel : ViewModel() {
-}
+class MicrophoneScreenViewModel : ViewModel() {}
 
 @Composable
 fun HoveringMicrophoneScreen(

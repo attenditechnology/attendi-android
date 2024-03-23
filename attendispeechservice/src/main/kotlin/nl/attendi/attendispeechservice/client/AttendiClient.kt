@@ -14,6 +14,7 @@
 
 package nl.attendi.attendispeechservice.client
 
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
 /** This class knows how to communicate with Attendi's backend APIs. */
@@ -21,7 +22,8 @@ class AttendiClient(
     private val apiConfig: TranscribeAPIConfig? = null,
     private val reportId: String = UUID.randomUUID().toString(),
     private val sessionId: String = UUID.randomUUID().toString(),
-    ) {
+) {
+
     /**
      * Transcribe a base-64 encoded wav file.
      *
@@ -64,7 +66,52 @@ class AttendiClient(
             apiBaseURL = apiConfigOverride?.apiURL ?: apiConfig?.apiURL
         )
     }
+
+    fun apiURL(apiConfigOverride: TranscribeAPIConfig? = null): String? {
+        return apiConfigOverride?.apiURL ?: apiConfig?.apiURL
+    }
+
+
+    /**
+     * Transcribe a base-64 encoded wav file.
+     *
+     * @param audioEncoded base-64 encoded wav file recorded at a sample rate of 16 KHz,
+     * with the audio data being represented using 16-bit signed integers.
+     * @param apiConfigOverride Use to override the API config settings provided to the client
+     * in [apiConfig] if necessary.
+     */
+    suspend fun authenticate(
+        apiConfigOverride: TranscribeAPIConfig? = null
+    ): String {
+        if (apiConfigOverride == null && apiConfig == null) {
+            throw Exception("No API config provided")
+        }
+
+        val authenticateRequest = AuthenticateRequestBody(
+            userId = apiConfigOverride?.userId ?: apiConfig?.userId
+            ?: throw Exception("No userId provided"),
+            unitId = apiConfigOverride?.unitId ?: apiConfig?.unitId
+            ?: throw Exception("No unitId provided"),
+            userAgent = apiConfigOverride?.userAgent ?: apiConfig?.userAgent
+        )
+
+        return authenticate(
+            requestBody = authenticateRequest,
+            customerKey = apiConfigOverride?.customerKey ?: apiConfig?.customerKey
+            ?: throw Exception(
+                "No customerKey provided"
+            ),
+            apiBaseURL = apiConfigOverride?.apiURL ?: apiConfig?.apiURL
+        ) ?: throw Exception("No token received")
+    }
 }
+
+@Serializable
+data class AuthenticateRequestBody(
+    val userId: String,
+    val unitId: String,
+    val userAgent: String?
+)
 
 /** Bundles up the information necessary to communicate with Attendi's speech understanding APIs. */
 data class TranscribeAPIConfig(
