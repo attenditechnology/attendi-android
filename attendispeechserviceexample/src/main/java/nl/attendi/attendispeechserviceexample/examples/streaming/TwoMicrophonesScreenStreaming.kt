@@ -35,7 +35,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,14 +50,65 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
-import nl.attendi.attendispeechserviceexample.MicrophoneScreenViewModel
 import nl.attendi.attendispeechserviceexample.exampleAPIConfig
 import nl.attendi.attendispeechserviceexample.examples.plugins.StopTranscriptionOnPausePlugin
 
-class MicrophoneScreenViewModel : ViewModel() {}
+/**
+ * We explicitly use a ViewModel here.
+ *
+ * If we use `rememberSaveable` for saving the large text, we run into some issues in the
+ * current setup on screen rotations. Namely, in the `AttendiAsyncTranscribePlugin` we define
+ * a closure `onIncomingMessage` that updates the text field. When the screen rotates, the current
+ * intended behavior is to stop the recording and save anything that was transcribed so far. To do
+ * so, we stop recording and send an `EndOfAudioStream` message to the server. The server then sends
+ * a `ProcessedStream` message back, which contains the full transcript of the stream. We then use
+ * this value to set te `largeText` value. If we would use `rememberSaveable`, the state of `largeText`
+ * is saved to a `Bundle` and restored on screen rotations. However, `largeText` would now refer to a
+ * new variable, located at a different memory address. This would render any updates to `largeText`
+ * useless.
+ *
+ * By using a `ViewModel`, we hoist the state up so it's not destroyed on a screen rotation, avoiding
+ * this issue.
+ */
+class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
+    private val _largeText = MutableStateFlow(TextFieldValue())
+    val largeText: StateFlow<TextFieldValue> = _largeText.asStateFlow()
+
+    private val _largeTextReceivedMessages = MutableStateFlow(emptyList<IncomingMessage>())
+    val largeTextReceivedMessages: StateFlow<List<IncomingMessage>> =
+        _largeTextReceivedMessages.asStateFlow()
+
+    private val _shortText = MutableStateFlow("")
+    val shortText: StateFlow<String> = _shortText.asStateFlow()
+
+    private val _shortTextReceivedMessages = MutableStateFlow(emptyList<IncomingMessage>())
+    val shortTextReceivedMessages: StateFlow<List<IncomingMessage>> =
+        _shortTextReceivedMessages.asStateFlow()
+
+    fun updateLargeText(value: TextFieldValue) {
+        _largeText.value = value
+    }
+
+    fun updateLargeTextReceivedMessages(value: List<IncomingMessage>) {
+        _largeTextReceivedMessages.value = value
+    }
+
+    fun updateshortText(value: String) {
+        _shortText.value = value
+    }
+
+    fun updateshortTextReceivedMessages(value: List<IncomingMessage>) {
+        _shortTextReceivedMessages.value = value
+    }
+}
 
 /**
  * This screen and the async transcribe plugin implementation below serves as an example how the streaming
@@ -120,32 +170,34 @@ class MicrophoneScreenViewModel : ViewModel() {}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TwoMicrophonesScreenStreaming(
-    viewModel: MicrophoneScreenViewModel = MicrophoneScreenViewModel()
+    viewModel: TwoMicrophonesScreenStreamingViewModel = viewModel(),
 ) {
+    val largeText by viewModel.largeText.collectAsStateWithLifecycle()
     // For the short text we keep it simple and don't implement streaming at cursor or selection.
-    var shortTextReceivedMessages by remember { mutableStateOf(listOf<IncomingMessage>()) }
-    var shortText by remember { mutableStateOf("") }
-    val shortTextInteractionSource = remember { MutableInteractionSource() }
-    val shortTextIsShowingStreamingTranscript = shortTextReceivedMessages.isNotEmpty()
+    val shortText by viewModel.shortText.collectAsStateWithLifecycle()
 
-    var largeTextReceivedMessages by remember { mutableStateOf(listOf<IncomingMessage>()) }
-    var largeTextValue by remember { mutableStateOf(TextFieldValue(text = "")) }
+    val shortTextReceivedMessages by viewModel.shortTextReceivedMessages.collectAsStateWithLifecycle()
+    val largeTextReceivedMessages by viewModel.largeTextReceivedMessages.collectAsStateWithLifecycle()
+
     // The focus fields are needed for streaming at cursor or location
     var largeTextSelectionBeforeLoseFocus by remember { mutableStateOf<TextRange?>(null) }
     var largeTextFieldHasFocus by remember { mutableStateOf(false) }
+
     // Required for the BasicTextField.
+    val shortTextInteractionSource = remember { MutableInteractionSource() }
     val largeTextInteractionSource = remember { MutableInteractionSource() }
 
+    val shortTextIsShowingStreamingTranscript = shortTextReceivedMessages.isNotEmpty()
     val largeTextIsShowingStreamingTranscript = largeTextReceivedMessages.isNotEmpty()
 
-    LaunchedEffect(largeTextValue) {
+    LaunchedEffect(largeText) {
         // Don't update the selection if the text field doesn't have focus. For example, when some
         // text is selected and the field loses focus, the information about what was selected is lost.
         // We want to keep this information since we want to insert the transcribed text at the correct
         // position, and we have to press the microphone button, which causes the text field to lose focus.
         if (!largeTextFieldHasFocus) return@LaunchedEffect
 
-        largeTextSelectionBeforeLoseFocus = largeTextValue.selection
+        largeTextSelectionBeforeLoseFocus = largeText.selection
     }
 
     Column(
@@ -176,7 +228,7 @@ fun TwoMicrophonesScreenStreaming(
                 // that we use a different component.
                 BasicTextField(
                     value = shortText,
-                    onValueChange = { shortText = it },
+                    onValueChange = { viewModel.updateshortText(it) },
                     modifier = Modifier
                         .weight(1f)
                         .padding(0.dp),
@@ -220,11 +272,16 @@ fun TwoMicrophonesScreenStreaming(
                                     return@AttendiAsyncTranscribePlugin
                                 }
 
-                                shortText =
-                                    mergeTextAtSelection(shortText, message.text, selection = null)
+                                viewModel.updateshortText(
+                                    mergeTextAtSelection(
+                                        shortText,
+                                        message.text,
+                                        selection = null
+                                    )
+                                )
 
                                 // Reset the received messages, as the current stream is done.
-                                shortTextReceivedMessages = listOf()
+                                viewModel.updateshortTextReceivedMessages(emptyList())
                                 return@AttendiAsyncTranscribePlugin
                             }
 
@@ -234,21 +291,26 @@ fun TwoMicrophonesScreenStreaming(
                             val previousMessage = shortTextReceivedMessages.lastOrNull()
 
                             if (previousMessage == null) {
-                                shortTextReceivedMessages = shortTextReceivedMessages + message
+                                viewModel.updateshortTextReceivedMessages(
+                                    shortTextReceivedMessages + message
+                                )
                                 return@AttendiAsyncTranscribePlugin
                             }
 
                             if (previousMessage.messageType == IncomingMessageType.UnprocessedSegment) {
                                 // We replace the last message if it was an UnprocessedSegment, since it
                                 // is tentative and should be overwritten by newer messages.
-                                shortTextReceivedMessages =
+                                viewModel.updateshortTextReceivedMessages(
                                     shortTextReceivedMessages.dropLast(1) + message
+                                )
                                 return@AttendiAsyncTranscribePlugin
                             }
 
                             // Now we know that the previous message was a ProcessedSegment (since we returned early
                             // for the other message types), so we only add a new message.
-                            shortTextReceivedMessages = shortTextReceivedMessages + message
+                            viewModel.updateshortTextReceivedMessages(
+                                shortTextReceivedMessages + message
+                            )
                         },
                         onSocketClosing = { _, code, reason ->
                             // TODO: replace this with the actual normal closing reason
@@ -257,20 +319,28 @@ fun TwoMicrophonesScreenStreaming(
                                 println("not closed normally!")
                             }
 
-                            // The socket's closing, but we haven't reached the end of the stream yet.
-                            // We should still merge what we can.
-                            if (shortTextReceivedMessages.isNotEmpty()) {
-                                // There's a socket failure, but we haven't reached the end of the stream yet.
-                                // We should still merge what we can.
-                                shortTextReceivedMessages.joinToString(" ") { it.text }.let {
-                                    shortText = mergeTextAtSelection(
-                                        shortText,
-                                        it,
-                                    )
-                                }
-                            }
+                            // TODO: uncomment and fix this later
+                            // // The socket's closing, but we haven't reached the end of the stream yet.
+                            // // We should still merge what we can.
+                            // if (shortTextReceivedMessages.isNotEmpty()) {
+                            //     // There's a socket failure, but we haven't reached the end of the stream yet.
+                            //     // We should still merge what we can.
+                            //     shortTextReceivedMessages.joinToString(" ") { it.text }.let {
+                            //         viewModel.updateshortText(
+                            //             mergeTextAtSelection(
+                            //                 shortText,
+                            //                 it,
+                            //             )
+                            //         )
+                            //         // shortText = mergeTextAtSelection(
+                            //         //     shortText,
+                            //         //     it,
+                            //         // )
+                            //     }
+                            // }
 
-                            shortTextReceivedMessages = mutableListOf()
+                            viewModel.updateshortTextReceivedMessages(emptyList())
+                            // shortTextReceivedMessages = mutableListOf()
                             println("closing websocket with code $code and reason $reason")
                         },
                         onSocketFailure = { _, t, response ->
@@ -278,15 +348,17 @@ fun TwoMicrophonesScreenStreaming(
                                 // There's a socket failure, but we haven't reached the end of the stream yet.
                                 // We should still merge what we can.
                                 shortTextReceivedMessages.joinToString(" ") { it.text }.let {
-                                    shortText = mergeTextAtSelection(
-                                        shortText,
-                                        it,
+                                    viewModel.updateshortText(
+                                        mergeTextAtSelection(
+                                            shortText,
+                                            it,
+                                        )
                                     )
                                 }
                             }
 
                             // Manually clear the received messages, since we can't continue the stream.
-                            shortTextReceivedMessages = mutableListOf()
+                            viewModel.updateshortTextReceivedMessages(emptyList())
 
                             println("websocket failure: $t, response: $response")
 
@@ -306,7 +378,7 @@ fun TwoMicrophonesScreenStreaming(
             if (largeTextIsShowingStreamingTranscript) {
                 Text(
                     buildStreamingTranscriptAnnotatedString(
-                        largeTextValue.text,
+                        largeText.text,
                         largeTextReceivedMessages,
                         largeTextSelectionBeforeLoseFocus
                     ),
@@ -322,8 +394,8 @@ fun TwoMicrophonesScreenStreaming(
                 // have the same padding and look like each other. This way the user doesn't notice
                 // that we use a different component.
                 BasicTextField(
-                    value = largeTextValue,
-                    onValueChange = { largeTextValue = it },
+                    value = largeText,
+                    onValueChange = { viewModel.updateLargeText(it) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -333,7 +405,7 @@ fun TwoMicrophonesScreenStreaming(
                     textStyle = MaterialTheme.typography.bodyLarge,
                 ) { innerTextField ->
                     TextFieldDefaults.DecorationBox(
-                        value = largeTextValue.text,
+                        value = largeText.text,
                         visualTransformation = VisualTransformation.None,
                         innerTextField = innerTextField,
                         singleLine = false,
@@ -366,16 +438,20 @@ fun TwoMicrophonesScreenStreaming(
                                     return@AttendiAsyncTranscribePlugin
                                 }
 
-                                largeTextValue = largeTextValue.copy(
-                                    text = mergeTextAtSelection(
-                                        largeTextValue.text,
-                                        message.text,
-                                        largeTextSelectionBeforeLoseFocus
+                                viewModel.updateLargeText(
+                                    largeText.copy(
+                                        text = mergeTextAtSelection(
+                                            largeText.text,
+                                            message.text,
+                                            largeTextSelectionBeforeLoseFocus
+                                        )
                                     )
                                 )
 
                                 // Reset the received messages, as the current stream is done.
-                                largeTextReceivedMessages = listOf()
+                                viewModel.updateLargeTextReceivedMessages(
+                                    emptyList()
+                                )
                                 return@AttendiAsyncTranscribePlugin
                             }
 
@@ -385,21 +461,27 @@ fun TwoMicrophonesScreenStreaming(
                             val previousMessage = largeTextReceivedMessages.lastOrNull()
 
                             if (previousMessage == null) {
-                                largeTextReceivedMessages = largeTextReceivedMessages + message
+                                viewModel.updateLargeTextReceivedMessages(
+                                    largeTextReceivedMessages + message
+                                )
+                                // largeTextReceivedMessages = largeTextReceivedMessages + message
                                 return@AttendiAsyncTranscribePlugin
                             }
 
                             if (previousMessage.messageType == IncomingMessageType.UnprocessedSegment) {
                                 // We replace the last message if it was an UnprocessedSegment, since it
                                 // is tentative and should be overwritten by newer messages.
-                                largeTextReceivedMessages =
+                                viewModel.updateLargeTextReceivedMessages(
                                     largeTextReceivedMessages.dropLast(1) + message
+                                )
                                 return@AttendiAsyncTranscribePlugin
                             }
 
                             // Now we know that the previous message was a ProcessedSegment (since we returned early
                             // for the other message types), so we only add a new message.
-                            largeTextReceivedMessages = largeTextReceivedMessages + message
+                            viewModel.updateLargeTextReceivedMessages(
+                                largeTextReceivedMessages + message
+                            )
                         },
                         onSocketClosing = { _, code, reason ->
                             // TODO: replace this with the actual normal closing reason
@@ -408,23 +490,26 @@ fun TwoMicrophonesScreenStreaming(
                                 println("not closed normally!")
                             }
 
-                            // The socket's closing, but we haven't reached the end of the stream yet.
-                            // We should still merge what we can.
-                            if (largeTextReceivedMessages.isNotEmpty()) {
-                                // There's a socket failure, but we haven't reached the end of the stream yet.
-                                // We should still merge what we can.
-                                largeTextReceivedMessages.joinToString(" ") { it.text }.let {
-                                    largeTextValue = largeTextValue.copy(
-                                        text = mergeTextAtSelection(
-                                            largeTextValue.text,
-                                            it,
-                                            largeTextSelectionBeforeLoseFocus
-                                        )
-                                    )
-                                }
-                            }
-
-                            largeTextReceivedMessages = mutableListOf()
+                            // TODO: uncomment and fix this later
+                            // // The socket's closing, but we haven't reached the end of the stream yet.
+                            // // We should still merge what we can.
+                            // if (largeTextReceivedMessages.isNotEmpty()) {
+                            //     // There's a socket failure, but we haven't reached the end of the stream yet.
+                            //     // We should still merge what we can.
+                            //     largeTextReceivedMessages.joinToString(" ") { it.text }.let {
+                            //         viewModel.updateLargeText(
+                            //             largeText.copy(
+                            //                 text = mergeTextAtSelection(
+                            //                     largeText.text,
+                            //                     it,
+                            //                     largeTextSelectionBeforeLoseFocus
+                            //                 )
+                            //             )
+                            //         )
+                            //     }
+                            // }
+                            //
+                            viewModel.updateLargeTextReceivedMessages(emptyList())
                             println("closing websocket with code $code and reason $reason")
                         },
                         onSocketFailure = { _, t, response ->
@@ -432,18 +517,20 @@ fun TwoMicrophonesScreenStreaming(
                                 // There's a socket failure, but we haven't reached the end of the stream yet.
                                 // We should still merge what we can.
                                 largeTextReceivedMessages.joinToString(" ") { it.text }.let {
-                                    largeTextValue = largeTextValue.copy(
-                                        text = mergeTextAtSelection(
-                                            largeTextValue.text,
-                                            it,
-                                            largeTextSelectionBeforeLoseFocus
+                                    viewModel.updateLargeText(
+                                        largeText.copy(
+                                            text = mergeTextAtSelection(
+                                                largeText.text,
+                                                it,
+                                                largeTextSelectionBeforeLoseFocus
+                                            )
                                         )
                                     )
                                 }
                             }
 
                             // Manually clear the received messages, since we can't continue the stream.
-                            largeTextReceivedMessages = mutableListOf()
+                            viewModel.updateLargeTextReceivedMessages(emptyList())
 
                             println("websocket failure: $t, response: $response")
 
