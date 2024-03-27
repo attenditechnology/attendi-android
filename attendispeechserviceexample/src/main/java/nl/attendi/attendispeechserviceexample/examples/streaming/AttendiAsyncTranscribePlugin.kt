@@ -15,6 +15,7 @@
 package nl.attendi.attendispeechserviceexample.examples.streaming
 
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -55,9 +56,7 @@ data class IncomingMessage @OptIn(ExperimentalSerializationApi::class) construct
 
 @Serializable
 enum class IncomingMessageType {
-    UnprocessedSegment,
-    ProcessedSegment,
-    ProcessedStream
+    UnprocessedSegment, ProcessedSegment, ProcessedStream
 }
 
 const val waitForServerToCloseSocketAfterEndOfAudioStreamTimeoutMilliseconds = 5000L
@@ -72,16 +71,16 @@ class AttendiAsyncTranscribePlugin(
      * Called when the socket is closing. The code is the status code sent by the server, and the
      * reason is a human-readable string explaining why the server closed the connection.
      */
-    private val onSocketClosing: (webSocket: WebSocket, code: Int, reason: String) -> Unit = { _, _, _ -> },
+    private val onSocketClosing: (webSocket: WebSocket, code: Int, reason: String, state: AttendiMicrophoneState) -> Unit = { _, _, _, _ -> },
     /**
      * Called when the socket fails. The throwable is the exception that caused the failure, or
      * null if the failure was a timeout.
      */
-    private val onSocketFailure: (webSocket: WebSocket, t: Throwable, response: Response?) -> Unit = { _, _, _ -> },
+    private val onSocketFailure: (webSocket: WebSocket, t: Throwable, response: Response?, state: AttendiMicrophoneState) -> Unit = { _, _, _, _ -> },
     /**
      * Called when a message is received from the server.
      */
-    private val onIncomingMessage: (IncomingMessage) -> Unit,
+    private val onIncomingMessage: (IncomingMessage, state: AttendiMicrophoneState) -> Unit,
 ) : AttendiMicrophonePlugin {
     private val client = AttendiClient(apiConfig)
     private var authenticationToken: String? = null
@@ -107,6 +106,7 @@ class AttendiAsyncTranscribePlugin(
             val request = Request.Builder().url(socketUrl)
                 .addHeader("Authorization", "Bearer $authenticationToken").build()
 
+
             socket = OkHttpClient().newWebSocket(request, object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     val configMessage = Json.encodeToString(
@@ -128,17 +128,36 @@ class AttendiAsyncTranscribePlugin(
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     val deserialized = Json.decodeFromString<IncomingMessage>(text)
-                    onIncomingMessage(deserialized)
+                    onIncomingMessage(deserialized, state)
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                    onSocketClosing(webSocket, code, reason)
+                    onSocketClosing(webSocket, code, reason, state)
                     socket = null
+
+                    // TODO: figure out when closed abnormally
+                    val closed_abnormally = false
+                    if (closed_abnormally)
+                    state.coroutineScope.launch {
+                        state.stop(delayMilliseconds = 0)
+
+                        for (errorCallback in state.errorCallbacks) {
+                            errorCallback(Exception("WebSocket failure: $reason"))
+                        }
+                    }
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    onSocketFailure(webSocket, t, response)
+                    onSocketFailure(webSocket, t, response, state)
                     socket = null
+
+                    state.coroutineScope.launch {
+                        state.stop(delayMilliseconds = 0)
+
+                        for (errorCallback in state.errorCallbacks) {
+                            errorCallback(Exception("WebSocket failure: $t"))
+                        }
+                    }
                 }
             })
         }
