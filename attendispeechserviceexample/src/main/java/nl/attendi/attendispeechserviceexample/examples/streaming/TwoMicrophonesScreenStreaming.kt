@@ -101,14 +101,81 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
         _largeTextReceivedMessages.value = value
     }
 
-    fun updateshortText(value: String) {
+    fun handleIncomingLargeMessage(message: IncomingMessage) {
+        val newText =
+            maybeUpdateText(_largeText.value.text, message, selection = _largeText.value.selection)
+        val newReceivedMessages = updateReceivedMessages(_largeTextReceivedMessages.value, message)
+
+        newText?.let {
+            updateLargeText(_largeText.value.copy(text = newText))
+        }
+        updateLargeTextReceivedMessages(newReceivedMessages)
+    }
+
+    fun updateShortText(value: String) {
         _shortText.value = value
     }
 
-    fun updateshortTextReceivedMessages(value: List<IncomingMessage>) {
+    fun updateShortTextReceivedMessages(value: List<IncomingMessage>) {
         _shortTextReceivedMessages.value = value
     }
+
+    fun handleIncomingShortMessage(message: IncomingMessage) {
+        val newText = maybeUpdateText(_shortText.value, message)
+        val newReceivedMessages = updateReceivedMessages(_shortTextReceivedMessages.value, message)
+
+        newText?.let { updateShortText(newText) }
+        updateShortTextReceivedMessages(newReceivedMessages)
+    }
 }
+
+private fun maybeUpdateText(
+    currentText: String, message: IncomingMessage, selection: TextRange? = null
+): String? {
+    // TODO: it seems like `ProcessedStream` messages are sent twice by the transcription server, where
+    //  the first message is empty text. This seems to be a bug in the server and should not happen. For now we
+    //  filter out empty messages.
+    if (message.messageType == IncomingMessageType.ProcessedStream && message.text.isNotEmpty()) {
+        return mergeTextAtSelection(
+            currentText, message.text, selection = selection
+        )
+    }
+    return null
+}
+
+private fun updateReceivedMessages(
+    currentMessages: List<IncomingMessage>, message: IncomingMessage
+): List<IncomingMessage> {
+    val result = currentMessages.toMutableList()
+
+    if (message.messageType == IncomingMessageType.ProcessedStream) {
+        // TODO: it seems like `ProcessedStream` messages are sent twice by the transcription server, where
+        //  the first message is empty text. This seems to be a bug in the server and should not happen. For now we
+        //  filter out empty messages.
+        if (currentMessages.isNotEmpty() && message.text.isEmpty()) {
+            return result
+        }
+
+        // Reset the received messages, as the current stream is done.
+        return emptyList()
+    }
+
+    // Ignore empty segments, which clutter the UX.
+    if (message.text.isEmpty()) return result
+
+    val previousMessage = currentMessages.lastOrNull() ?: return listOf(message)
+
+    if (previousMessage.messageType == IncomingMessageType.UnprocessedSegment) {
+        // We replace the last message if it was an UnprocessedSegment, since it
+        // is tentative and should be overwritten by newer messages.
+        return currentMessages.dropLast(1) + message
+    }
+
+    // Now we know that the previous message was a ProcessedSegment (since we returned early
+    // for the other message types), so we only add a new message.
+    return currentMessages + message
+}
+
 
 /**
  * This screen and the async transcribe plugin implementation below serves as an example how the streaming
@@ -228,7 +295,7 @@ fun TwoMicrophonesScreenStreaming(
                 // that we use a different component.
                 BasicTextField(
                     value = shortText,
-                    onValueChange = { viewModel.updateshortText(it) },
+                    onValueChange = { viewModel.updateShortText(it) },
                     modifier = Modifier
                         .weight(1f)
                         .padding(0.dp),
@@ -263,54 +330,7 @@ fun TwoMicrophonesScreenStreaming(
                     AttendiAsyncTranscribePlugin(apiConfig = exampleAPIConfig,
                         onIncomingMessage = { message ->
                             println("incoming message: $message")
-
-                            if (message.messageType == IncomingMessageType.ProcessedStream) {
-                                // TODO: it seems like `ProcessedStream` messages are sent twice by the transcription server, where
-                                //  the first message is empty text. This seems to be a bug in the server and should not happen. For now we
-                                //  filter out empty messages.
-                                if (shortTextReceivedMessages.isNotEmpty() && message.text.isEmpty()) {
-                                    return@AttendiAsyncTranscribePlugin
-                                }
-
-                                viewModel.updateshortText(
-                                    mergeTextAtSelection(
-                                        shortText,
-                                        message.text,
-                                        selection = null
-                                    )
-                                )
-
-                                // Reset the received messages, as the current stream is done.
-                                viewModel.updateshortTextReceivedMessages(emptyList())
-                                return@AttendiAsyncTranscribePlugin
-                            }
-
-                            // Ignore empty segments, which clutter the UX.
-                            if (message.text.isEmpty()) return@AttendiAsyncTranscribePlugin
-
-                            val previousMessage = shortTextReceivedMessages.lastOrNull()
-
-                            if (previousMessage == null) {
-                                viewModel.updateshortTextReceivedMessages(
-                                    shortTextReceivedMessages + message
-                                )
-                                return@AttendiAsyncTranscribePlugin
-                            }
-
-                            if (previousMessage.messageType == IncomingMessageType.UnprocessedSegment) {
-                                // We replace the last message if it was an UnprocessedSegment, since it
-                                // is tentative and should be overwritten by newer messages.
-                                viewModel.updateshortTextReceivedMessages(
-                                    shortTextReceivedMessages.dropLast(1) + message
-                                )
-                                return@AttendiAsyncTranscribePlugin
-                            }
-
-                            // Now we know that the previous message was a ProcessedSegment (since we returned early
-                            // for the other message types), so we only add a new message.
-                            viewModel.updateshortTextReceivedMessages(
-                                shortTextReceivedMessages + message
-                            )
+                            viewModel.handleIncomingShortMessage(message)
                         },
                         onSocketClosing = { _, code, reason ->
                             // TODO: replace this with the actual normal closing reason
@@ -339,7 +359,7 @@ fun TwoMicrophonesScreenStreaming(
                             //     }
                             // }
 
-                            viewModel.updateshortTextReceivedMessages(emptyList())
+                            viewModel.updateShortTextReceivedMessages(emptyList())
                             // shortTextReceivedMessages = mutableListOf()
                             println("closing websocket with code $code and reason $reason")
                         },
@@ -348,7 +368,7 @@ fun TwoMicrophonesScreenStreaming(
                                 // There's a socket failure, but we haven't reached the end of the stream yet.
                                 // We should still merge what we can.
                                 shortTextReceivedMessages.joinToString(" ") { it.text }.let {
-                                    viewModel.updateshortText(
+                                    viewModel.updateShortText(
                                         mergeTextAtSelection(
                                             shortText,
                                             it,
@@ -358,7 +378,7 @@ fun TwoMicrophonesScreenStreaming(
                             }
 
                             // Manually clear the received messages, since we can't continue the stream.
-                            viewModel.updateshortTextReceivedMessages(emptyList())
+                            viewModel.updateShortTextReceivedMessages(emptyList())
 
                             println("websocket failure: $t, response: $response")
 
@@ -378,9 +398,7 @@ fun TwoMicrophonesScreenStreaming(
             if (largeTextIsShowingStreamingTranscript) {
                 Text(
                     buildStreamingTranscriptAnnotatedString(
-                        largeText.text,
-                        largeTextReceivedMessages,
-                        largeTextSelectionBeforeLoseFocus
+                        largeText.text, largeTextReceivedMessages, largeTextSelectionBeforeLoseFocus
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -429,59 +447,7 @@ fun TwoMicrophonesScreenStreaming(
                     AttendiAsyncTranscribePlugin(apiConfig = exampleAPIConfig,
                         onIncomingMessage = { message ->
                             println("incoming message: $message")
-
-                            if (message.messageType == IncomingMessageType.ProcessedStream) {
-                                // TODO: it seems like `ProcessedStream` messages are sent twice by the transcription server, where
-                                //  the first message is empty text. This seems to be a bug in the server and should not happen. For now we
-                                //  filter out empty messages.
-                                if (largeTextReceivedMessages.isNotEmpty() && message.text.isEmpty()) {
-                                    return@AttendiAsyncTranscribePlugin
-                                }
-
-                                viewModel.updateLargeText(
-                                    largeText.copy(
-                                        text = mergeTextAtSelection(
-                                            largeText.text,
-                                            message.text,
-                                            largeTextSelectionBeforeLoseFocus
-                                        )
-                                    )
-                                )
-
-                                // Reset the received messages, as the current stream is done.
-                                viewModel.updateLargeTextReceivedMessages(
-                                    emptyList()
-                                )
-                                return@AttendiAsyncTranscribePlugin
-                            }
-
-                            // Ignore empty segments, which clutter the UX.
-                            if (message.text.isEmpty()) return@AttendiAsyncTranscribePlugin
-
-                            val previousMessage = largeTextReceivedMessages.lastOrNull()
-
-                            if (previousMessage == null) {
-                                viewModel.updateLargeTextReceivedMessages(
-                                    largeTextReceivedMessages + message
-                                )
-                                // largeTextReceivedMessages = largeTextReceivedMessages + message
-                                return@AttendiAsyncTranscribePlugin
-                            }
-
-                            if (previousMessage.messageType == IncomingMessageType.UnprocessedSegment) {
-                                // We replace the last message if it was an UnprocessedSegment, since it
-                                // is tentative and should be overwritten by newer messages.
-                                viewModel.updateLargeTextReceivedMessages(
-                                    largeTextReceivedMessages.dropLast(1) + message
-                                )
-                                return@AttendiAsyncTranscribePlugin
-                            }
-
-                            // Now we know that the previous message was a ProcessedSegment (since we returned early
-                            // for the other message types), so we only add a new message.
-                            viewModel.updateLargeTextReceivedMessages(
-                                largeTextReceivedMessages + message
-                            )
+                            viewModel.handleIncomingLargeMessage(message)
                         },
                         onSocketClosing = { _, code, reason ->
                             // TODO: replace this with the actual normal closing reason
