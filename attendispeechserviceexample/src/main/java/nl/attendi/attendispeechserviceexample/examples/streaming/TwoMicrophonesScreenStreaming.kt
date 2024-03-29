@@ -91,9 +91,12 @@ import nl.attendi.attendispeechserviceexample.examples.plugins.StopTranscription
  * black again to indicate that the transcription is finished.
  *
  * In the current implementation we achieve this by keeping track of a list of
- * received messages so far, see [TwoMicrophonesScreenStreamingViewModel._largeTextReceivedMessages].
+ * received messages so far, see e.g. [TwoMicrophonesScreenStreamingViewModel._largeTextReceivedMessages].
  * This allows us to keep track of the messages on the list level instead of directly manipulating strings.
  * See [updateReceivedTranscriptionMessages] for more details on how the list is updated.
+ *
+ * [buildStyledTranscript] then builds an `AnnotatedString` from the received messages
+ * to color and style the text according to the above specifications.
  */
 @Composable
 fun TwoMicrophonesScreenStreaming(
@@ -439,8 +442,8 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
  * For instance, if the current `receivedMessages` list is
  * ```
  * [
- *   IncomingMessage(IncomingMessageType.FinalSegment, "Hello"),
- *   IncomingMessage(IncomingMessageType.TentativeSegment, "world"),
+ *   IncomingTranscriptionMessage(IncomingTranscriptionMessageType.FinalSegment, "Hello"),
+ *   IncomingTranscriptionMessage(IncomingTranscriptionMessageType.TentativeSegment, "world"),
  * ]
  * ```
  * and a new message of type `TentativeSegment` or `FinalSegment` with text "!"
@@ -449,15 +452,12 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
  * the new list will then be
  * ```
  * [
- *  IncomingMessage(IncomingMessageType.FinalSegment, "Hello"),
- *  IncomingMessage(IncomingMessageType.FinalSegment, "!"),
+ *  IncomingTranscriptionMessage(IncomingTranscriptionMessageType.FinalSegment, "Hello"),
+ *  IncomingTranscriptionMessage(IncomingTranscriptionMessageType.FinalSegment, "!"),
  *  ]
  *  ```
- *
- * We then build an `AnnotatedString` from the received messages
- * to color and style the text according to the above specifications.
  */
-private fun updateReceivedTranscriptionMessages(
+internal fun updateReceivedTranscriptionMessages(
     currentMessages: List<IncomingTranscriptionMessage>, message: IncomingTranscriptionMessage
 ): List<IncomingTranscriptionMessage> {
     val result = currentMessages.toMutableList()
