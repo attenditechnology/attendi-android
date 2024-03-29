@@ -1,5 +1,10 @@
 package nl.attendi.attendispeechserviceexample.examples.streaming
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.withStyle
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -192,5 +197,89 @@ class UpdateReceivedTranscriptionMessagesTest {
 
             assertEquals(expected, result)
         }
+    }
+}
+
+class BuildStyledTranscriptTest {
+    private val tentativeSegmentStyle = SpanStyle(
+        color = Color.Red,
+        fontStyle = FontStyle.Italic
+    )
+    private val finalSegmentStyle = SpanStyle(
+        color = Color.Blue,
+        fontStyle = FontStyle.Italic
+    )
+    private val messageStyles = mapOf(
+        IncomingTranscriptionMessageType.TentativeSegment to tentativeSegmentStyle,
+        IncomingTranscriptionMessageType.FinalSegment to finalSegmentStyle,
+    )
+
+    @Test
+    fun `buildStyledTranscript with empty messages should return empty string`() {
+        val messages = listOf<IncomingTranscriptionMessage>()
+
+        val expected = buildAnnotatedString { }
+
+        val result = buildStyledTranscript(messages, styles = messageStyles)
+
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun `buildStyledTranscript with single tentative segment should return correct styled string`() {
+        val messages = listOf(
+            IncomingTranscriptionMessage(IncomingTranscriptionMessageType.TentativeSegment, "Hello")
+        )
+
+        val expected = buildAnnotatedString {
+            withStyle(tentativeSegmentStyle) { append("Hello") }
+        }
+
+        val result = buildStyledTranscript(messages, styles = messageStyles)
+
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun `buildStyledTranscript with single final segment should return correct styled string`() {
+        val messages = listOf(
+            IncomingTranscriptionMessage(IncomingTranscriptionMessageType.FinalSegment, "Hello")
+        )
+
+        val expected = buildAnnotatedString {
+            withStyle(finalSegmentStyle) { append("Hello") }
+        }
+
+        val result = buildStyledTranscript(messages, styles = messageStyles)
+
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun `buildStyledTranscript with multiple messages should return styled string with spaces between`() {
+        val messages = listOf(
+            IncomingTranscriptionMessage(
+                IncomingTranscriptionMessageType.FinalSegment,
+                "Hello"
+            ),
+            IncomingTranscriptionMessage(
+                IncomingTranscriptionMessageType.TentativeSegment,
+                "how are you?"
+            )
+        )
+
+        val expected = buildAnnotatedString {
+            withStyle(finalSegmentStyle) {
+                append("Hello")
+            }
+            append(" ")
+            withStyle(tentativeSegmentStyle) {
+                append("how are you?")
+            }
+        }
+
+        val result = buildStyledTranscript(messages, styles = messageStyles)
+
+        assertEquals(expected, result)
     }
 }
