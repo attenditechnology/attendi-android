@@ -39,26 +39,69 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 
+const val WEBSOCKET_NORMAL_CLOSURE_CODE = 1000
+
+/**
+ * This message is sent to the transcription server when the microphone starts recording.
+ */
 @Serializable
 data class ClientConfigurationMessage(
+    /**
+     * Is always "ClientConfiguration" for this message type. However, the serialization somehow
+     * doesn't include the messageType in the JSON when we use a default value for the field.
+     */
     val messageType: String,
+    /**
+     * The model to use for transcription. If not specified, the backend uses a default model
+     * specified for the customer.
+     */
     val model: String?,
+    // TODO: the sample rate will be removed as we currently only support 16 kHz.
     val sampleRate: Int,
+    /**
+     * Allows for associating multiple transcriptions into `sessions` and `reports`.
+     */
     val reportUuid: String?,
     val sessionUuid: String?
 )
 
+/**
+ * Data model for messages from the transcription websocket server.
+ */
 @Serializable
 data class IncomingMessage @OptIn(ExperimentalSerializationApi::class) constructor(
     // TODO: should we rename the field to `messageType` for consistency?
     @JsonNames("type") val messageType: IncomingMessageType, val text: String
 )
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 enum class IncomingMessageType {
-    UnprocessedSegment, ProcessedSegment, ProcessedStream
+    // Anticipating changing the names of the message types (current ones are `UnprocessedSegment`,
+    // `ProcessedSegment`, `ProcessedStream`)
+    /**
+     * The intermediate segments that can still change.
+     */
+    @JsonNames("UnprocessedSegment", "TentativeSegment")
+    TentativeSegment,
+
+    /**
+     * Intermediate segments that are final. Some more postprocessing is usually done on these segments.
+     */
+    @JsonNames("ProcessedSegment", "FinalSegment")
+    FinalSegment,
+
+    /**
+     * The final transcription of the audio stream. This can be used to replace the text in the UI
+     * in the end.
+     */
+    @JsonNames("ProcessedStream", "CompletedStream")
+    CompletedStream
 }
 
+/**
+ * The time to wait for the server to close the socket after the end of the audio stream is sent.
+ */
 const val waitForServerToCloseSocketAfterEndOfAudioStreamTimeoutMilliseconds = 5000L
 
 /**
@@ -70,6 +113,9 @@ class AttendiAsyncTranscribePlugin(
     /**
      * Called when the socket is closing. The code is the status code sent by the server, and the
      * reason is a human-readable string explaining why the server closed the connection.
+     *
+     * The `AttendiMicrophoneState` is passed to the callback to allow calling some plugin
+     * functionality at the plugin's callsite.
      */
     private val onSocketClosing: (webSocket: WebSocket, code: Int, reason: String, state: AttendiMicrophoneState) -> Unit = { _, _, _, _ -> },
     /**
@@ -83,11 +129,13 @@ class AttendiAsyncTranscribePlugin(
     private val onIncomingMessage: (IncomingMessage, state: AttendiMicrophoneState) -> Unit,
 ) : AttendiMicrophonePlugin {
     private val client = AttendiClient(apiConfig)
+
+    // TODO: check: is it necessary to refresh this token in this plugin?
     private var authenticationToken: String? = null
 
     private var socket: WebSocket? = null
 
-    private val N_SAMPLES_PER_MESSAGE = 4224 // = 33 * 128
+    private val N_SAMPLES_PER_MESSAGE = 4224 // around 264 ms of audio at 16 kHz
     private var streamingBuffer = mutableListOf<Short>()
 
     private val reportUUID: UUID = UUID.randomUUID()
@@ -97,7 +145,7 @@ class AttendiAsyncTranscribePlugin(
         state.onBeforeStartRecording {
             if (authenticationToken == null) authenticationToken = client.authenticate(apiConfig)
 
-            assert(socket == null) { "Socket should be null when starting to record" }
+            assert(socket == null) { "Socket should not be set when starting to record, was null" }
 
             val socketBaseUrl =
                 client.apiURL()?.replace("http", "ws") ?: throw Exception("No API URL provided")
@@ -105,7 +153,6 @@ class AttendiAsyncTranscribePlugin(
 
             val request = Request.Builder().url(socketUrl)
                 .addHeader("Authorization", "Bearer $authenticationToken").build()
-
 
             socket = OkHttpClient().newWebSocket(request, object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -135,9 +182,9 @@ class AttendiAsyncTranscribePlugin(
                     onSocketClosing(webSocket, code, reason, state)
                     socket = null
 
-                    // TODO: figure out when closed abnormally
-                    val closed_abnormally = false
-                    if (closed_abnormally)
+                    if (code == WEBSOCKET_NORMAL_CLOSURE_CODE) return
+
+                    // When the connection is closed abnormally, stop the microphone and show an error.
                     state.coroutineScope.launch {
                         state.stop(delayMilliseconds = 0)
 
@@ -162,6 +209,8 @@ class AttendiAsyncTranscribePlugin(
             })
         }
 
+        // When receiving audio frames from the microphone, we collect the samples in a buffer. When
+        // we have enough samples in the buffer, we send them to the server.
         state.onAudioFrames { audioFrames ->
             if (socket == null) return@onAudioFrames
 
@@ -202,7 +251,7 @@ class AttendiAsyncTranscribePlugin(
             // Close the socket if still open after the timeout
             if (reachedTimeoutWithoutClosing) {
                 // TODO: find proper code and reason to close it with
-                socket?.close(1000, "Timeout")
+                socket?.close(1001, "Timeout reached after end of audio stream message sent")
                 // TODO: I don't think we have to set the socket to null here, since it's done in the callbacks
                 socket = null
             }
@@ -211,7 +260,7 @@ class AttendiAsyncTranscribePlugin(
     }
 }
 
-fun List<Short>.toByteString(): ByteString {
+private fun List<Short>.toByteString(): ByteString {
     val byteBuffer = ByteBuffer.allocate(this.size * 2).order(ByteOrder.LITTLE_ENDIAN)
     for (short in this) {
         byteBuffer.putShort(short)
