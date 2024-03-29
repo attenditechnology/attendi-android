@@ -69,14 +69,14 @@ data class ClientConfigurationMessage(
  * Data model for messages from the transcription websocket server.
  */
 @Serializable
-data class IncomingMessage @OptIn(ExperimentalSerializationApi::class) constructor(
+data class IncomingTranscriptionMessage @OptIn(ExperimentalSerializationApi::class) constructor(
     // TODO: should we rename the field to `messageType` for consistency?
-    @JsonNames("type") val messageType: IncomingMessageType, val text: String
+    @JsonNames("type") val messageType: IncomingTranscriptionMessageType, val text: String
 )
 
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
-enum class IncomingMessageType {
+enum class IncomingTranscriptionMessageType {
     // Anticipating changing the names of the message types (current ones are `UnprocessedSegment`,
     // `ProcessedSegment`, `ProcessedStream`)
     /**
@@ -126,7 +126,7 @@ class AttendiAsyncTranscribePlugin(
     /**
      * Called when a message is received from the server.
      */
-    private val onIncomingMessage: (IncomingMessage, state: AttendiMicrophoneState) -> Unit,
+    private val onIncomingMessage: (IncomingTranscriptionMessage, state: AttendiMicrophoneState) -> Unit,
 ) : AttendiMicrophonePlugin {
     private val client = AttendiClient(apiConfig)
 
@@ -174,7 +174,7 @@ class AttendiAsyncTranscribePlugin(
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    val deserialized = Json.decodeFromString<IncomingMessage>(text)
+                    val deserialized = Json.decodeFromString<IncomingTranscriptionMessage>(text)
                     onIncomingMessage(deserialized, state)
                 }
 

@@ -74,46 +74,26 @@ import nl.attendi.attendispeechserviceexample.examples.plugins.StopTranscription
  * or some shade of color lighter than the already existing text. This makes it
  * clear to the user that this text is part of the transcript, and is tentative,
  * possibly still changing.
- * // TODO: change these mentions to `TentativeSegment`, `FinalSegment`, etc.
- * - Messages of type `UnprocessedSegment` should show in an even lighter shade
- * of gray than messages of type `ProcessedSegment`. This signals to the user that
- * the `UnprocessedSegment` is (even) more tentative than `ProcessedSegment` (which
- * is also tentative as it can be replaced by the final `ProcessedStream` message).
- * - If a new `UnprocessedSegment` comes in, it should replace the previous `UnprocessedSegment`.
- * - Any `ProcessedSegment` should not be removed as new unprocessed and processed
- * segments come in. For example, if the first `ProcessedSegment` is received,
- * any unprocessed and processed segments received after it are shown after the first
- * `ProcessedSegment` in the text field, since a `ProcessedSegment` is not tentative.
- * - The ProcessedStream  So at the end we should replace all the incoming streamed transcript by the contents of it. The color should now be black again.
- * - A message of type `ProcessedStream` contains *all* the transcript of the stream
+ * - Messages of type `TentativeSegment` should show in an even lighter shade
+ * of gray than messages of type `FinalSegment`. This signals to the user that
+ * the `TentativeSegment` is (even) more tentative than `FinalSegment` (which
+ * is also tentative as it can be replaced by the final `CompletedStream` message).
+ * - If a new `TentativeSegment` comes in, it should replace the previous `TentativeSegment`.
+ * - Any `FinalSegment` should not be removed as new tentative and final
+ * segments come in. For example, if the first `FinalSegment` is received,
+ * any tentative and final segments received after it are shown after the first
+ * `FinalSegment` in the text field, since a `FinalSegment` is not tentative.
+ * - The CompletedStream  So at the end we should replace all the incoming streamed transcript by the contents of it. The color should now be black again.
+ * - A message of type `CompletedStream` contains *all* the transcript of the stream
  * and might make some improvements on the transcription or do some extra processing.
- * It replaces any of the previous `UnprocessedSegment` and `ProcessedSegment` messages.
+ * It replaces any of the previous `TentativeSegment` and `FinalSegment` messages.
  * It is added to the existing text field, after which the color of the text should be
  * black again to indicate that the transcription is finished.
  *
  * In the current implementation we achieve this by keeping track of a list of
- * received messages so far, see `receivedMessages`. This allows us to keep track
- * of the messages on the list level instead of directly manipulating any strings.
- * For instance, if the current `receivedMessages` list is
- * ```
- * [
- *   IncomingMessage(IncomingMessageType.ProcessedSegment, "Hello"),
- *   IncomingMessage(IncomingMessageType.UnprocessedSegment, "world"),
- * ]
- * ```
- * and a new message of type `UnprocessedSegment` or `ProcessedSegment` with text "!"
- * comes in, we *replace* the last message in the list with the new message
- * (since the previous item is an `UnprocessedSegment`). If we added a `ProcessedSegment`,
- * the new list will then be
- * ```
- * [
- *  IncomingMessage(IncomingMessageType.ProcessedSegment, "Hello"),
- *  IncomingMessage(IncomingMessageType.ProcessedSegment, "!"),
- *  ]
- *  ```
- *
- * We then build an `AnnotatedString` from the received messages
- * to color and style the text according to the above specifications.
+ * received messages so far, see [TwoMicrophonesScreenStreamingViewModel._largeTextReceivedMessages].
+ * This allows us to keep track of the messages on the list level instead of directly manipulating strings.
+ * See [updateReceivedTranscriptionMessages] for more details on how the list is updated.
  */
 @Composable
 fun TwoMicrophonesScreenStreaming(
@@ -293,7 +273,7 @@ fun TwoMicrophonesScreenStreaming(
 }
 
 private fun buildStreamingTranscriptAnnotatedString(
-    currentText: String, receivedMessages: List<IncomingMessage>, selection: TextRange? = null
+    currentText: String, receivedMessages: List<IncomingTranscriptionMessage>, selection: TextRange? = null
 ): AnnotatedString {
     val styledTranscript = buildStyledTranscript(receivedMessages)
 
@@ -333,7 +313,7 @@ private fun buildStreamingTranscriptAnnotatedString(
  * a closure `onIncomingMessage` that updates the text field. When the screen rotates, the current
  * intended behavior is to stop the recording and save anything that was transcribed so far. To do
  * so, we stop recording and send an `EndOfAudioStream` message to the server. The server then sends
- * a `ProcessedStream` message back, which contains the full transcript of the stream. We then use
+ * a `CompletedStream` message back, which contains the full transcript of the stream. We then use
  * this value to set the `largeText` value. If we would use `rememberSaveable`, the state of `largeText`
  * is saved to a `Bundle` and restored on screen rotations. However, `largeText` would now refer to a
  * new variable, located at a different memory address. This would render any updates to `largeText`
@@ -346,15 +326,15 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
     private val _largeText = MutableStateFlow(TextFieldValue())
     val largeText: StateFlow<TextFieldValue> = _largeText.asStateFlow()
 
-    private val _largeTextReceivedMessages = MutableStateFlow(emptyList<IncomingMessage>())
-    val largeTextReceivedMessages: StateFlow<List<IncomingMessage>> =
+    private val _largeTextReceivedMessages = MutableStateFlow(emptyList<IncomingTranscriptionMessage>())
+    val largeTextReceivedMessages: StateFlow<List<IncomingTranscriptionMessage>> =
         _largeTextReceivedMessages.asStateFlow()
 
     private val _shortText = MutableStateFlow(TextFieldValue())
     val shortText: StateFlow<TextFieldValue> = _shortText.asStateFlow()
 
-    private val _shortTextReceivedMessages = MutableStateFlow(emptyList<IncomingMessage>())
-    val shortTextReceivedMessages: StateFlow<List<IncomingMessage>> =
+    private val _shortTextReceivedMessages = MutableStateFlow(emptyList<IncomingTranscriptionMessage>())
+    val shortTextReceivedMessages: StateFlow<List<IncomingTranscriptionMessage>> =
         _shortTextReceivedMessages.asStateFlow()
 
     fun updateLargeText(value: TextFieldValue) {
@@ -364,12 +344,12 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
         _largeText.value = value
     }
 
-    private fun updateLargeTextReceivedMessages(value: List<IncomingMessage>) {
+    private fun updateLargeTextReceivedMessages(value: List<IncomingTranscriptionMessage>) {
         _largeTextReceivedMessages.value = value
     }
 
     fun handleIncomingLargeMessage(
-        message: IncomingMessage, selectionBeforeStartingStreaming: TextRange?
+        message: IncomingTranscriptionMessage, selectionBeforeStartingStreaming: TextRange?
     ) {
         val currentText = _largeText.value
 
@@ -377,7 +357,7 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
             message, currentText, _largeTextReceivedMessages.value, selectionBeforeStartingStreaming
         )
 
-        val newReceivedMessages = updateReceivedMessages(_largeTextReceivedMessages.value, message)
+        val newReceivedMessages = updateReceivedTranscriptionMessages(_largeTextReceivedMessages.value, message)
 
         // Don't update the text if it's the same as the current text.
         if (newText != currentText) updateLargeText(newText)
@@ -406,12 +386,12 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
         _shortText.value = value
     }
 
-    private fun updateShortTextReceivedMessages(value: List<IncomingMessage>) {
+    private fun updateShortTextReceivedMessages(value: List<IncomingTranscriptionMessage>) {
         _shortTextReceivedMessages.value = value
     }
 
     fun handleIncomingShortMessage(
-        message: IncomingMessage, selectionBeforeStartingStreaming: TextRange?
+        message: IncomingTranscriptionMessage, selectionBeforeStartingStreaming: TextRange?
     ) {
         val currentText = _shortText.value
 
@@ -419,7 +399,7 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
             message, currentText, _shortTextReceivedMessages.value, selectionBeforeStartingStreaming
         )
 
-        val newReceivedMessages = updateReceivedMessages(_shortTextReceivedMessages.value, message)
+        val newReceivedMessages = updateReceivedTranscriptionMessages(_shortTextReceivedMessages.value, message)
 
         // Don't update the text if it's the same as the current text.
         if (newText != currentText) updateShortText(newText)
@@ -445,13 +425,45 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
     }
 }
 
-private fun updateReceivedMessages(
-    currentMessages: List<IncomingMessage>, message: IncomingMessage
-): List<IncomingMessage> {
+/**
+ * Return a new list of received messages, based on the current list of received transcription messages
+ * and a new message.
+ *
+ * The rules are as follows:
+ * - If the new message is of type `CompletedStream`, we clear the current list of received messages.
+ * - If the previous message was a `TentativeSegment`, we replace it with the new message. Otherwise,
+ * we add the new message to the list.
+ * - `FinalSegment` messages are appended to the list and are never replaced (until a `CompletedStream`
+ * message is received).
+ *
+ * For instance, if the current `receivedMessages` list is
+ * ```
+ * [
+ *   IncomingMessage(IncomingMessageType.FinalSegment, "Hello"),
+ *   IncomingMessage(IncomingMessageType.TentativeSegment, "world"),
+ * ]
+ * ```
+ * and a new message of type `TentativeSegment` or `FinalSegment` with text "!"
+ * comes in, we *replace* the last message in the list with the new message
+ * (since the previous item is an `TentativeSegment`). If we added a `FinalSegment`,
+ * the new list will then be
+ * ```
+ * [
+ *  IncomingMessage(IncomingMessageType.FinalSegment, "Hello"),
+ *  IncomingMessage(IncomingMessageType.FinalSegment, "!"),
+ *  ]
+ *  ```
+ *
+ * We then build an `AnnotatedString` from the received messages
+ * to color and style the text according to the above specifications.
+ */
+private fun updateReceivedTranscriptionMessages(
+    currentMessages: List<IncomingTranscriptionMessage>, message: IncomingTranscriptionMessage
+): List<IncomingTranscriptionMessage> {
     val result = currentMessages.toMutableList()
 
-    if (message.messageType == IncomingMessageType.CompletedStream) {
-        // TODO: it seems like `ProcessedStream` messages are sent twice by the transcription server, where
+    if (message.messageType == IncomingTranscriptionMessageType.CompletedStream) {
+        // TODO: it seems like `CompletedStream` messages are sent twice by the transcription server, where
         //  the first message is empty text. This seems to be a bug in the server and should not happen. For now we
         //  filter out empty messages.
         if (currentMessages.isNotEmpty() && message.text.isEmpty()) {
@@ -467,21 +479,21 @@ private fun updateReceivedMessages(
 
     val previousMessage = currentMessages.lastOrNull() ?: return listOf(message)
 
-    if (previousMessage.messageType == IncomingMessageType.TentativeSegment) {
-        // We replace the last message if it was an UnprocessedSegment, since it
+    if (previousMessage.messageType == IncomingTranscriptionMessageType.TentativeSegment) {
+        // We replace the last message if it was an TentativeSegment, since it
         // is tentative and should be overwritten by newer messages.
         return currentMessages.dropLast(1) + message
     }
 
-    // Now we know that the previous message was a ProcessedSegment (since we returned early
+    // Now we know that the previous message was a FinalSegment (since we returned early
     // for the other message types), so we only add a new message.
     return currentMessages + message
 }
 
 private fun maybeUpdateText(
-    message: IncomingMessage,
+    message: IncomingTranscriptionMessage,
     currentText: TextFieldValue,
-    receivedMessages: List<IncomingMessage>,
+    receivedMessages: List<IncomingTranscriptionMessage>,
     selectionBeforeStartingStreaming: TextRange?
 ): TextFieldValue {
     var newText = currentText
@@ -494,8 +506,8 @@ private fun maybeUpdateText(
         )
     }
 
-    // Replace all current text if we receive a ProcessedStream message.
-    if (message.messageType == IncomingMessageType.CompletedStream && message.text.isNotEmpty()) {
+    // Replace all current text if we receive a CompletedStream message.
+    if (message.messageType == IncomingTranscriptionMessageType.CompletedStream && message.text.isNotEmpty()) {
         newText = mergeTextFieldValueAtSelection(
             currentText, message.text, selectionBeforeStartingStreaming
         )
@@ -537,12 +549,11 @@ private fun mergeTextFieldValueAtSelection(
     )
 }
 
-fun buildStyledTranscript(receivedMessages: List<IncomingMessage>): AnnotatedString {
+fun buildStyledTranscript(receivedMessages: List<IncomingTranscriptionMessage>): AnnotatedString {
     return buildAnnotatedString {
         receivedMessages.forEachIndexed { index, message ->
-            // TODO: rename message types to new names
             when (message.messageType) {
-                IncomingMessageType.TentativeSegment -> {
+                IncomingTranscriptionMessageType.TentativeSegment -> {
                     withStyle(
                         style = SpanStyle(
                             color = Color(170, 170, 170), fontStyle = FontStyle.Italic
@@ -552,7 +563,7 @@ fun buildStyledTranscript(receivedMessages: List<IncomingMessage>): AnnotatedStr
                     }
                 }
 
-                IncomingMessageType.FinalSegment -> {
+                IncomingTranscriptionMessageType.FinalSegment -> {
                     withStyle(
                         style = SpanStyle(
                             color = Color(118, 118, 118), fontStyle = FontStyle.Italic
@@ -562,10 +573,9 @@ fun buildStyledTranscript(receivedMessages: List<IncomingMessage>): AnnotatedStr
                     }
                 }
 
-                // TODO: this actually never happens, since when we receive a ProcessedStream message, we
-                //  clear the incomingMessages list. So this case is not needed, but we leave it in as
-                //  an example.
-                IncomingMessageType.CompletedStream -> {
+                // We should actually never see a `CompletedStream` here, as we clear the list
+                // received messages when we receive it. We leave it in as an example.
+                IncomingTranscriptionMessageType.CompletedStream -> {
                     withStyle(style = SpanStyle(color = Color.Black)) {
                         append(message.text)
                     }
