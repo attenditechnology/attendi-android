@@ -231,8 +231,7 @@ fun TwoMicrophonesScreenStreaming(
                             largeText.text,
                             largeTextReceivedMessages,
                             largeTextSelectionBeforeLoseFocusAndStreaming
-                        ),
-                        offsetMapping = OffsetMapping.Identity
+                        ), offsetMapping = OffsetMapping.Identity
                     )
                 },
                 modifier = Modifier
@@ -276,7 +275,9 @@ fun TwoMicrophonesScreenStreaming(
 }
 
 private fun buildStreamingTranscriptAnnotatedString(
-    currentText: String, receivedMessages: List<IncomingTranscriptionMessage>, selection: TextRange? = null
+    currentText: String,
+    receivedMessages: List<IncomingTranscriptionMessage>,
+    selection: TextRange? = null
 ): AnnotatedString {
     val styledTranscript = buildStyledTranscript(receivedMessages)
 
@@ -329,14 +330,16 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
     private val _largeText = MutableStateFlow(TextFieldValue())
     val largeText: StateFlow<TextFieldValue> = _largeText.asStateFlow()
 
-    private val _largeTextReceivedMessages = MutableStateFlow(emptyList<IncomingTranscriptionMessage>())
+    private val _largeTextReceivedMessages =
+        MutableStateFlow(emptyList<IncomingTranscriptionMessage>())
     val largeTextReceivedMessages: StateFlow<List<IncomingTranscriptionMessage>> =
         _largeTextReceivedMessages.asStateFlow()
 
     private val _shortText = MutableStateFlow(TextFieldValue())
     val shortText: StateFlow<TextFieldValue> = _shortText.asStateFlow()
 
-    private val _shortTextReceivedMessages = MutableStateFlow(emptyList<IncomingTranscriptionMessage>())
+    private val _shortTextReceivedMessages =
+        MutableStateFlow(emptyList<IncomingTranscriptionMessage>())
     val shortTextReceivedMessages: StateFlow<List<IncomingTranscriptionMessage>> =
         _shortTextReceivedMessages.asStateFlow()
 
@@ -360,7 +363,8 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
             message, currentText, _largeTextReceivedMessages.value, selectionBeforeStartingStreaming
         )
 
-        val newReceivedMessages = updateReceivedTranscriptionMessages(_largeTextReceivedMessages.value, message)
+        val newReceivedMessages =
+            updateReceivedTranscriptionMessages(_largeTextReceivedMessages.value, message)
 
         // Don't update the text if it's the same as the current text.
         if (newText != currentText) updateLargeText(newText)
@@ -402,7 +406,8 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
             message, currentText, _shortTextReceivedMessages.value, selectionBeforeStartingStreaming
         )
 
-        val newReceivedMessages = updateReceivedTranscriptionMessages(_shortTextReceivedMessages.value, message)
+        val newReceivedMessages =
+            updateReceivedTranscriptionMessages(_shortTextReceivedMessages.value, message)
 
         // Don't update the text if it's the same as the current text.
         if (newText != currentText) updateShortText(newText)
@@ -549,14 +554,28 @@ private fun mergeTextFieldValueAtSelection(
     )
 }
 
-fun buildStyledTranscript(receivedMessages: List<IncomingTranscriptionMessage>): AnnotatedString {
+/**
+ * Build an `AnnotatedString` from a list of received transcription messages.
+ *
+ * We give different styles to the different types of messages. These styles can be configured
+ * with the [styles] parameter. By default uses shades of gray for the different message types.
+ *
+ * We add a space between the messages, but not after the last message.
+ */
+fun buildStyledTranscript(
+    receivedMessages: List<IncomingTranscriptionMessage>,
+    styles: Map<IncomingTranscriptionMessageType, SpanStyle>? = null
+): AnnotatedString {
     return buildAnnotatedString {
         receivedMessages.forEachIndexed { index, message ->
+            val messageStyle = styles?.get(message.messageType)
+
             when (message.messageType) {
                 IncomingTranscriptionMessageType.TentativeSegment -> {
                     withStyle(
-                        style = SpanStyle(
-                            color = Color(170, 170, 170), fontStyle = FontStyle.Italic
+                        messageStyle ?: SpanStyle(
+                            color = Color(170, 170, 170),
+                            fontStyle = FontStyle.Italic
                         )
                     ) {
                         append(message.text)
@@ -565,8 +584,9 @@ fun buildStyledTranscript(receivedMessages: List<IncomingTranscriptionMessage>):
 
                 IncomingTranscriptionMessageType.FinalSegment -> {
                     withStyle(
-                        style = SpanStyle(
-                            color = Color(118, 118, 118), fontStyle = FontStyle.Italic
+                        messageStyle ?: SpanStyle(
+                            color = Color(118, 118, 118),
+                            fontStyle = FontStyle.Italic
                         )
                     ) {
                         append(message.text)
