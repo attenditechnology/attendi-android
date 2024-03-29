@@ -431,6 +431,73 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
         // Manually clear the received messages, since we can't continue the stream.
         updateShortTextReceivedMessages(emptyList())
     }
+
+    /**
+     * Update a text field value based on an incoming message.
+     *
+     * If the message is a `CompletedStream` message, its text replaces the current text.
+     * If the selection is not collapsed (i.e. a word is selected), we remove the selection
+     * and set the cursor to the selection's start position. It doesn't make sense to keep
+     * the selection when we start streaming, since the previously selected is replaced.
+     */
+    private fun maybeUpdateText(
+        message: IncomingTranscriptionMessage,
+        currentText: TextFieldValue,
+        receivedMessages: List<IncomingTranscriptionMessage>,
+        selectionBeforeStartingStreaming: TextRange?
+    ): TextFieldValue {
+        var newText = currentText
+
+        // If we start streaming at a selection, remove the selection by its start position. It can
+        // be a bit annoying to have the selection still there when we start streaming.
+        if (receivedMessages.isNotEmpty() && !currentText.selection.collapsed) {
+            return currentText.copy(
+                selection = TextRange(currentText.selection.start)
+            )
+        }
+
+        // Replace all current text if we receive a CompletedStream message.
+        if (message.messageType == IncomingTranscriptionMessageType.CompletedStream && message.text.isNotEmpty()) {
+            newText = mergeTextFieldValueAtSelection(
+                currentText, message.text, selectionBeforeStartingStreaming
+            )
+        }
+
+        return newText
+    }
+
+    private fun mergeTextFieldValueAtSelection(
+        currentTextFieldValue: TextFieldValue,
+        newText: String,
+        selection: TextRange? = null,
+    ): TextFieldValue {
+        // If there is no selection, we add the new text at the end.
+        if (selection == null) {
+            val maybeSeparator =
+                if (currentTextFieldValue.text.isNotEmpty() && newText.isNotEmpty()) " " else ""
+
+            return currentTextFieldValue.copy(
+                currentTextFieldValue.text + maybeSeparator + newText,
+                TextRange(currentTextFieldValue.text.length + maybeSeparator.length + newText.length)
+            )
+        }
+
+        // val selection = currentTextFieldValue.selection
+        val start = selection.start
+        val end = selection.end
+
+        val before = currentTextFieldValue.text.substring(0, start)
+        val after = currentTextFieldValue.text.substring(end)
+
+        // This is very simple, not taking into account a lot of edge cases like capitalization, punctuation, etc.
+        val beforeSeparator = if (before.isNotEmpty() && !before.endsWith(" ")) " " else ""
+        val afterSeparator = if (after.isNotEmpty() && !after.startsWith(" ")) " " else ""
+
+        return TextFieldValue(
+            "$before$beforeSeparator$newText$afterSeparator$after",
+            TextRange(before.length + beforeSeparator.length + newText.length)
+        )
+    }
 }
 
 /**
@@ -493,65 +560,6 @@ internal fun updateReceivedTranscriptionMessages(
     // Now we know that the previous message was a FinalSegment (since we returned early
     // for the other message types), so we only add a new message.
     return currentMessages + message
-}
-
-private fun maybeUpdateText(
-    message: IncomingTranscriptionMessage,
-    currentText: TextFieldValue,
-    receivedMessages: List<IncomingTranscriptionMessage>,
-    selectionBeforeStartingStreaming: TextRange?
-): TextFieldValue {
-    var newText = currentText
-
-    // If we start streaming at a selection, remove the selection by its start position. It can
-    // be a bit annoying to have the selection still there when we start streaming.
-    if (receivedMessages.isNotEmpty() && !currentText.selection.collapsed) {
-        return currentText.copy(
-            selection = TextRange(currentText.selection.start)
-        )
-    }
-
-    // Replace all current text if we receive a CompletedStream message.
-    if (message.messageType == IncomingTranscriptionMessageType.CompletedStream && message.text.isNotEmpty()) {
-        newText = mergeTextFieldValueAtSelection(
-            currentText, message.text, selectionBeforeStartingStreaming
-        )
-    }
-
-    return newText
-}
-
-private fun mergeTextFieldValueAtSelection(
-    currentTextFieldValue: TextFieldValue,
-    newText: String,
-    selection: TextRange? = null,
-): TextFieldValue {
-    // If there is no selection, we add the new text at the end.
-    if (selection == null) {
-        val maybeSeparator =
-            if (currentTextFieldValue.text.isNotEmpty() && newText.isNotEmpty()) " " else ""
-
-        return currentTextFieldValue.copy(
-            currentTextFieldValue.text + maybeSeparator + newText,
-            TextRange(currentTextFieldValue.text.length + maybeSeparator.length + newText.length)
-        )
-    }
-
-    // val selection = currentTextFieldValue.selection
-    val start = selection.start
-    val end = selection.end
-
-    val before = currentTextFieldValue.text.substring(0, start)
-    val after = currentTextFieldValue.text.substring(end)
-
-    // This is very simple, not taking into account a lot of edge cases like capitalization, punctuation, etc.
-    val beforeSeparator = if (before.isNotEmpty() && !before.endsWith(" ")) " " else ""
-    val afterSeparator = if (after.isNotEmpty() && !after.startsWith(" ")) " " else ""
-
-    return TextFieldValue(
-        "$before$beforeSeparator$newText$afterSeparator$after",
-        TextRange(before.length + beforeSeparator.length + newText.length)
-    )
 }
 
 /**
