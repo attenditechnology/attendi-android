@@ -60,6 +60,17 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.4.3"
+    androidTestImplementation 'org.mockito:mockito-android:5.11.0'
+    testImplementation "org.mockito.kotlin:mockito-kotlin:5.3.0"
+    // AndroidX Test - JVM testing
+    testImplementation "androidx.test.ext:junit-ktx:1.1.5"
+    testImplementation "androidx.test:core-ktx:1.5.0"
+    testImplementation "org.robolectric:robolectric:4.11.1"
+    testImplementation "androidx.activity:activity-ktx:1.8.2"
+    // Grant permissions during testing
+    androidTestImplementation 'androidx.test:rules:1.5.0'
+
+
     debugImplementation "androidx.compose.ui:ui-tooling:1.4.3"
 
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'

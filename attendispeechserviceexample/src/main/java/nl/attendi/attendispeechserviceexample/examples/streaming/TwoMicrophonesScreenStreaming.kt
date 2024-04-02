@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -134,7 +135,6 @@ fun TwoMicrophonesScreenStreaming(
 
         largeTextSelectionBeforeLoseFocusAndStreaming = largeText.selection
     }
-
 
     Column(
         modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -238,13 +238,15 @@ fun TwoMicrophonesScreenStreaming(
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(0.dp)
-                    .onFocusChanged { largeTextFieldHasFocus = it.isFocused },
+                    .onFocusChanged { largeTextFieldHasFocus = it.isFocused }
+                    .testTag("TwoMicrophonesScreenStreamingLargeTextField")
+                ,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
-                )
+                ),
             )
             AttendiMicrophone(
                 plugins = listOf(
@@ -269,12 +271,13 @@ fun TwoMicrophonesScreenStreaming(
                             )
                         }),
                 ),
+                modifier = Modifier.testTag("TwoMicrophonesScreenStreamingLargeTextMicrophone")
             )
         }
     }
 }
 
-private fun buildStreamingTranscriptAnnotatedString(
+internal fun buildStreamingTranscriptAnnotatedString(
     currentText: String,
     receivedMessages: List<IncomingTranscriptionMessage>,
     selection: TextRange? = null
@@ -344,9 +347,6 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
         _shortTextReceivedMessages.asStateFlow()
 
     fun updateLargeText(value: TextFieldValue) {
-        // Don't update the text if it's the same as the current text.
-        // This can happen when only the selection changes.
-        // if (value.text == _largeText.value.text) return
         _largeText.value = value
     }
 
@@ -433,12 +433,14 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
     }
 
     /**
-     * Update a text field value based on an incoming message.
+     * Return an updated text field value, updated based on an incoming message.
      *
      * If the message is a `CompletedStream` message, its text replaces the current text.
      * If the selection is not collapsed (i.e. a word is selected), we remove the selection
      * and set the cursor to the selection's start position. It doesn't make sense to keep
      * the selection when we start streaming, since the previously selected is replaced.
+     *
+     * Otherwise, return the original text.
      */
     private fun maybeUpdateText(
         message: IncomingTranscriptionMessage,
@@ -482,7 +484,6 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
             )
         }
 
-        // val selection = currentTextFieldValue.selection
         val start = selection.start
         val end = selection.end
 
