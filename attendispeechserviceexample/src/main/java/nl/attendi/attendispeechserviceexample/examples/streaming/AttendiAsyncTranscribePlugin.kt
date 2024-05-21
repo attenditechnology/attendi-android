@@ -148,7 +148,7 @@ class AttendiAsyncTranscribePlugin(
             assert(socket == null) { "Socket should not be set when starting to record, was null" }
 
             val socketBaseUrl =
-                client.apiURL()?.replace("http", "ws") ?: throw Exception("No API URL provided")
+                client.getApiURL()?.replace("http", "ws") ?: throw Exception("No API URL provided")
             val socketUrl = "$socketBaseUrl/v1/speech/transcribe/stream"
 
             val request = Request.Builder().url(socketUrl)

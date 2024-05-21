@@ -68,6 +68,8 @@ suspend fun transcribe(
 
 /**
  * Request an authentication token from Attendi's identity service.
+ *
+ * If the request is successful, the token is returned. Otherwise, `null` is returned.
  */
 suspend fun authenticate(
     requestBody: AuthenticateRequestBody,

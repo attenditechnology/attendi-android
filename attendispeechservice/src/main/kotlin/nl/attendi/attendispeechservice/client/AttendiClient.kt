@@ -67,16 +67,15 @@ class AttendiClient(
         )
     }
 
-    fun apiURL(apiConfigOverride: TranscribeAPIConfig? = null): String? {
+    fun getApiURL(apiConfigOverride: TranscribeAPIConfig? = null): String? {
         return apiConfigOverride?.apiURL ?: apiConfig?.apiURL
     }
 
 
     /**
-     * Transcribe a base-64 encoded wav file.
+     * Request to receive a token that can be used to authenticate subsequent requests to different
+     * API endpoints.
      *
-     * @param audioEncoded base-64 encoded wav file recorded at a sample rate of 16 KHz,
-     * with the audio data being represented using 16-bit signed integers.
      * @param apiConfigOverride Use to override the API config settings provided to the client
      * in [apiConfig] if necessary.
      */

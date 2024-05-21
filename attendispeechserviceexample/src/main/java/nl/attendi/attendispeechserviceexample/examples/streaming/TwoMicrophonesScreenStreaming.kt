@@ -71,20 +71,22 @@ import nl.attendi.attendispeechserviceexample.examples.plugins.StopTranscription
  * or to place the transcription at the cursor location.
  * - We now want to add any incoming transcript data to the text field to give
  * immediate feedback to the user. For now, we assume the original text color is black.
- * - Any text that is added due to transcription should be displayed in gray,
- * or some shade of color lighter than the already existing text. This makes it
- * clear to the user that this text is part of the transcript, and is tentative,
- * possibly still changing.
- * - Messages of type `TentativeSegment` should show in an even lighter shade
- * of gray than messages of type `FinalSegment`. This signals to the user that
- * the `TentativeSegment` is (even) more tentative than `FinalSegment` (which
- * is also tentative as it can be replaced by the final `CompletedStream` message).
+ * - Different "categories" of messages should be displayed with different styles to make it clear
+ * to the user that they are different. We can make a distinction between already existing text,
+ * final segments, and tentative segments. In this demo we use:
+ *   - Black for the original text: makes it clear that this is the original text, not the transcript.
+ *   - Gray cursive for final segments: makes it clear that this is part of the transcript.
+ *   - Bright blue cursive for tentative segments: makes it clear that this is part of the transcript,
+ *   but is still tentative and might change. The bright color makes it stand out more than the
+ *   final segments, making it easier for the user to focus on a small part. It also signals to the
+ *   user that the `TentativeSegment` is (even) more tentative than `FinalSegment` (which
+ *  is also tentative as it can be replaced by the final `CompletedStream` message).
+ * of gray than messages of type `FinalSegment`.
  * - If a new `TentativeSegment` comes in, it should replace the previous `TentativeSegment`.
  * - Any `FinalSegment` should not be removed as new tentative and final
  * segments come in. For example, if the first `FinalSegment` is received,
  * any tentative and final segments received after it are shown after the first
  * `FinalSegment` in the text field, since a `FinalSegment` is not tentative.
- * - The CompletedStream  So at the end we should replace all the incoming streamed transcript by the contents of it. The color should now be black again.
  * - A message of type `CompletedStream` contains *all* the transcript of the stream
  * and might make some improvements on the transcription or do some extra processing.
  * It replaces any of the previous `TentativeSegment` and `FinalSegment` messages.
@@ -583,7 +585,7 @@ fun buildStyledTranscript(
                 IncomingTranscriptionMessageType.TentativeSegment -> {
                     withStyle(
                         messageStyle ?: SpanStyle(
-                            color = Color(170, 170, 170),
+                            color = Color(24, 147, 255),
                             fontStyle = FontStyle.Italic
                         )
                     ) {
