@@ -14,8 +14,10 @@
 
 package nl.attendi.attendispeechserviceexample.examples.streaming
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -38,6 +40,8 @@ import okio.ByteString.Companion.toByteString
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 const val WEBSOCKET_NORMAL_CLOSURE_CODE = 1000
 
@@ -50,14 +54,12 @@ data class ClientConfigurationMessage(
      * Is always "ClientConfiguration" for this message type. However, the serialization somehow
      * doesn't include the messageType in the JSON when we use a default value for the field.
      */
-    val messageType: String,
+    val type: String,
     /**
      * The model to use for transcription. If not specified, the backend uses a default model
      * specified for the customer.
      */
     val model: String?,
-    // TODO: the sample rate will be removed as we currently only support 16 kHz.
-    val sampleRate: Int,
     /**
      * Allows for associating multiple transcriptions into `sessions` and `reports`.
      */
@@ -70,8 +72,7 @@ data class ClientConfigurationMessage(
  */
 @Serializable
 data class IncomingTranscriptionMessage @OptIn(ExperimentalSerializationApi::class) constructor(
-    // TODO: should we rename the field to `messageType` for consistency?
-    @JsonNames("type") val messageType: IncomingTranscriptionMessageType, val text: String
+    val type: IncomingTranscriptionMessageType, val text: String
 )
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -82,20 +83,20 @@ enum class IncomingTranscriptionMessageType {
     /**
      * The intermediate segments that can still change.
      */
-    @JsonNames("UnprocessedSegment", "TentativeSegment")
+    @JsonNames("tentativeSegment", "UnprocessedSegment")
     TentativeSegment,
 
     /**
      * Intermediate segments that are final. Some more postprocessing is usually done on these segments.
      */
-    @JsonNames("ProcessedSegment", "FinalSegment")
+    @JsonNames("finalSegment", "ProcessedSegment")
     FinalSegment,
 
     /**
      * The final transcription of the audio stream. This can be used to replace the text in the UI
      * in the end.
      */
-    @JsonNames("ProcessedStream", "CompletedStream")
+    @JsonNames("completedStream", "ProcessedStream")
     CompletedStream
 }
 
@@ -154,17 +155,25 @@ class AttendiAsyncTranscribePlugin(
             val request = Request.Builder().url(socketUrl)
                 .addHeader("Authorization", "Bearer $authenticationToken").build()
 
+            // It's possible that the websocket connection takes some time to establish. If we already
+            // start recording, it's possible we send a lot of audio at once, which can result in
+            // undefined behavior. Therefore we want to wait until the websocket connection is established
+            // before we exit this function. To do so, we use a CountDownLatch, which we decrement when the
+            // connection is established.
+            val latch = CountDownLatch(1)
+            var connectionSuccessful = false
+
             socket = OkHttpClient().newWebSocket(request, object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
+                    connectionSuccessful = true
+                    latch.countDown()
                     val configMessage = Json.encodeToString(
                         ClientConfigurationMessage(
                             // TODO: Use a default for the messageType. But somehow the serialization then doesn't
                             //  include the messageType in the JSON. So for now we set it explicitly to "ClientConfiguration".
-                            messageType = "ClientConfiguration",
+                            type = "ClientConfiguration",
                             // TODO: I don't think it's always necessary to include the model
                             model = "ResidentialCare",
-                            // TODO: I don't think we need to include the sample rate
-                            sampleRate = 16000,
                             reportUuid = reportUUID.toString(),
                             sessionUuid = sessionUUID.toString()
                         )
@@ -207,6 +216,26 @@ class AttendiAsyncTranscribePlugin(
                     }
                 }
             })
+            // Wait for the websocket connection to be established or timeout.
+            withContext(Dispatchers.IO) {
+                if (!latch.await(20, TimeUnit.SECONDS)) {
+                    state.coroutineScope.launch {
+                        state.stop(delayMilliseconds = 0)
+                        for (errorCallback in state.errorCallbacks) {
+                            errorCallback(Exception("WebSocket connection timed out"))
+                        }
+                    }
+                }
+            }
+
+            if (!connectionSuccessful) {
+                state.coroutineScope.launch {
+                    state.stop(delayMilliseconds = 0)
+                    for (errorCallback in state.errorCallbacks) {
+                        errorCallback(Exception("WebSocket connection failed"))
+                    }
+                }
+            }
         }
 
         // When receiving audio frames from the microphone, we collect the samples in a buffer. When
@@ -232,7 +261,6 @@ class AttendiAsyncTranscribePlugin(
             // Clear the streaming buffer
             streamingBuffer = mutableListOf()
 
-            // TODO: probably nicer not to use a raw string here
             socket?.send("{\"messageType\": \"endOfAudioStream\"}")
 
             // Set a timeout for the server to close the connection
@@ -250,7 +278,6 @@ class AttendiAsyncTranscribePlugin(
 
             // Close the socket if still open after the timeout
             if (reachedTimeoutWithoutClosing) {
-                // TODO: find proper code and reason to close it with
                 socket?.close(1001, "Timeout reached after end of audio stream message sent")
                 // TODO: I don't think we have to set the socket to null here, since it's done in the callbacks
                 socket = null

@@ -461,7 +461,7 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
         }
 
         // Replace all current text if we receive a CompletedStream message.
-        if (message.messageType == IncomingTranscriptionMessageType.CompletedStream && message.text.isNotEmpty()) {
+        if (message.type == IncomingTranscriptionMessageType.CompletedStream && message.text.isNotEmpty()) {
             newText = mergeTextFieldValueAtSelection(
                 currentText, message.text, selectionBeforeStartingStreaming
             )
@@ -537,7 +537,7 @@ internal fun updateReceivedTranscriptionMessages(
 ): List<IncomingTranscriptionMessage> {
     val result = currentMessages.toMutableList()
 
-    if (message.messageType == IncomingTranscriptionMessageType.CompletedStream) {
+    if (message.type == IncomingTranscriptionMessageType.CompletedStream) {
         // TODO: it seems like `CompletedStream` messages are sent twice by the transcription server, where
         //  the first message is empty text. This seems to be a bug in the server and should not happen. For now we
         //  filter out empty messages.
@@ -554,7 +554,7 @@ internal fun updateReceivedTranscriptionMessages(
 
     val previousMessage = currentMessages.lastOrNull() ?: return listOf(message)
 
-    if (previousMessage.messageType == IncomingTranscriptionMessageType.TentativeSegment) {
+    if (previousMessage.type == IncomingTranscriptionMessageType.TentativeSegment) {
         // We replace the last message if it was an TentativeSegment, since it
         // is tentative and should be overwritten by newer messages.
         return currentMessages.dropLast(1) + message
@@ -579,9 +579,9 @@ fun buildStyledTranscript(
 ): AnnotatedString {
     return buildAnnotatedString {
         receivedMessages.forEachIndexed { index, message ->
-            val messageStyle = styles?.get(message.messageType)
+            val messageStyle = styles?.get(message.type)
 
-            when (message.messageType) {
+            when (message.type) {
                 IncomingTranscriptionMessageType.TentativeSegment -> {
                     withStyle(
                         messageStyle ?: SpanStyle(
