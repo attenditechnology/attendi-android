@@ -161,6 +161,31 @@ class AttendiErrorPlugin : AttendiMicrophonePlugin {
 }
 ```
 
+## Development
+
+### Network Security Configuration
+
+In the attendispeechserviceexample module, a custom network security configuration is defined via the following attribute in the AndroidManifest.xml:
+`android:networkSecurityConfig="@xml/network_security_config"`
+
+This configuration references an XML file that customizes the app’s handling of network security—particularly useful during development and debugging.
+The current network_security_config.xml file is configured to trust user-installed certificate authorities (CAs). This is particularly helpful when using debugging tools such as Charles Proxy or Proxyman to inspect network traffic.
+**Important:**
+This configuration is strictly for development and debugging purposes only. It should never be used in production builds, as trusting user-installed certificates can pose serious security risks.
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <debug-overrides>
+        <trust-anchors>
+            <!-- Trust user added CAs while debuggable only -->
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
+```
+
 ## Issues
 
-If you encounter any issues, don't hesitate to contact us at `omar@attendi.nl`.
+If you encounter any issues, don't hesitate to contact us at `omar@attendi.nl` or `emiliano@attendi.nl`.
+
+
