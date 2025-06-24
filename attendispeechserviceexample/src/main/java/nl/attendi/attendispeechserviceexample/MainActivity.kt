@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
 val exampleAPIConfig = TranscribeAPIConfig(
     modelType = ModelType.DistrictCare,
     userAgent = "Android",
-    customerKey = "ck_key",
+    customerKey = BuildConfig.ATTENDI_CUSTOMER_KEY,
     apiURL = "https://sandbox.api.attendi.nl",
     unitId = "unitId",
     userId = "userId",
