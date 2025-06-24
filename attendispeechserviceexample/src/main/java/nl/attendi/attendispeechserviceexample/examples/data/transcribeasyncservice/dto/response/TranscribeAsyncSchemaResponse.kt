@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechserviceexample.examples.data.dto.response
+package nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -13,10 +13,10 @@ data class TranscribeAsyncSchemaResponse(
 
 @Serializable
 data class TranscribeAsyncAnnotationResponse(
-    val type: TranscribeAsyncActionTypeResponse,
     val id: String,
-    val parameters: TranscribeAsyncAnnotationParametersResponse,
-    val index: Int? = null
+    val index: Int,
+    val type: TranscribeAsyncActionTypeResponse,
+    val parameters: TranscribeAsyncAnnotationParametersResponse?
 )
 
 @Serializable
@@ -32,7 +32,8 @@ data class TranscribeAsyncAnnotationParametersResponse(
 @Serializable
 data class TranscribeAsyncAnnotationExtraParametersResponse(
     val status: TranscribeAsyncAnnotationIntentStatusResponse? = null,
-    val type: TranscribeAsyncAnnotationEntityTypeResponse? = null
+    val type: TranscribeAsyncAnnotationEntityTypeResponse? = null,
+    val text: String? = null
 )
 
 @Serializable

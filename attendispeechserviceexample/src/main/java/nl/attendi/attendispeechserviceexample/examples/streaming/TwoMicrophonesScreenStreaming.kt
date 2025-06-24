@@ -54,7 +54,7 @@ import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicro
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
 import nl.attendi.attendispeechserviceexample.exampleAPIConfig
 import nl.attendi.attendispeechserviceexample.examples.plugins.StopTranscriptionOnPausePlugin
-import nl.attendi.attendispeechserviceexample.examples.data.dto.response.TranscribeAsyncSchemaResponse
+import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAction
 
 /**
  * This screen and the async transcribe plugin implementation below serves as an example how the streaming
@@ -254,9 +254,9 @@ fun TwoMicrophonesScreenStreaming(
                     StopTranscriptionOnPausePlugin(viewModel.viewModelScope),
                     AttendiAsyncTranscribePlugin(
                         apiConfig = exampleAPIConfig,
-                        onIncomingMessage = { message, _ ->
+                        onIncomingMessage = { actions, _ ->
                             viewModel.handleIncomingLargeMessage(
-                                message, largeTextSelectionBeforeLoseFocusAndStreaming
+                                actions, largeTextSelectionBeforeLoseFocusAndStreaming
                             )
                         },
                         onSocketClosing = { _, code, _, _ ->
@@ -280,7 +280,7 @@ fun TwoMicrophonesScreenStreaming(
 
 internal fun buildStreamingTranscriptAnnotatedString(
     currentText: String,
-    receivedMessages: List<TranscribeAsyncSchemaResponse>,
+    receivedMessages: List<TranscribeAsyncAction>,
     selection: TextRange? = null
 ): AnnotatedString {
     val styledTranscript = buildStyledTranscript(receivedMessages)
@@ -335,28 +335,28 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
     val largeText: StateFlow<TextFieldValue> = _largeText.asStateFlow()
 
     private val _largeTextReceivedMessages =
-        MutableStateFlow(emptyList<TranscribeAsyncSchemaResponse>())
-    val largeTextReceivedMessages: StateFlow<List<TranscribeAsyncSchemaResponse>> =
+        MutableStateFlow(emptyList<TranscribeAsyncAction>())
+    val largeTextReceivedMessages: StateFlow<List<TranscribeAsyncAction>> =
         _largeTextReceivedMessages.asStateFlow()
 
     private val _shortText = MutableStateFlow(TextFieldValue())
     val shortText: StateFlow<TextFieldValue> = _shortText.asStateFlow()
 
     private val _shortTextReceivedMessages =
-        MutableStateFlow(emptyList<TranscribeAsyncSchemaResponse>())
-    val shortTextReceivedMessages: StateFlow<List<TranscribeAsyncSchemaResponse>> =
+        MutableStateFlow(emptyList<TranscribeAsyncAction>())
+    val shortTextReceivedMessages: StateFlow<List<TranscribeAsyncAction>> =
         _shortTextReceivedMessages.asStateFlow()
 
     fun updateLargeText(value: TextFieldValue) {
         _largeText.value = value
     }
 
-    private fun updateLargeTextReceivedMessages(value: List<TranscribeAsyncSchemaResponse>) {
+    private fun updateLargeTextReceivedMessages(value: List<TranscribeAsyncAction>) {
         _largeTextReceivedMessages.value = value
     }
 
     fun handleIncomingLargeMessage(
-        message: TranscribeAsyncSchemaResponse, selectionBeforeStartingStreaming: TextRange?
+        actions: List<TranscribeAsyncAction>, selectionBeforeStartingStreaming: TextRange?
     ) {
         // TODO Handle incoming messages
     }
@@ -369,12 +369,12 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
         _shortText.value = value
     }
 
-    private fun updateShortTextReceivedMessages(value: List<TranscribeAsyncSchemaResponse>) {
+    private fun updateShortTextReceivedMessages(value: List<TranscribeAsyncAction>) {
         _shortTextReceivedMessages.value = value
     }
 
     fun handleIncomingShortMessage(
-        message: TranscribeAsyncSchemaResponse, selectionBeforeStartingStreaming: TextRange?
+        actions: List<TranscribeAsyncAction>, selectionBeforeStartingStreaming: TextRange?
     ) {
         // TODO: Handle incoming short messages
     }
@@ -425,7 +425,7 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
  * We add a space between the messages, but not after the last message.
  */
 fun buildStyledTranscript(
-    receivedMessages: List<TranscribeAsyncSchemaResponse>
+    receivedMessages: List<TranscribeAsyncAction>
 ): AnnotatedString {
     return buildAnnotatedString {
         // TODO: Build Styled transcript

@@ -26,10 +26,12 @@ import nl.attendi.attendispeechservice.client.AttendiClient
 import nl.attendi.attendispeechservice.client.TranscribeAPIConfig
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
-import nl.attendi.attendispeechserviceexample.examples.data.dto.request.TranscribeAsyncAppSettingsRequest
-import nl.attendi.attendispeechserviceexample.examples.data.dto.request.TranscribeAsyncClientConfigurationMessageRequest
-import nl.attendi.attendispeechserviceexample.examples.data.dto.response.TranscribeAsyncSchemaResponse
-import nl.attendi.attendispeechserviceexample.examples.data.dto.request.TranscribeAsyncVoiceEditingAppSettingsRequest
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request.TranscribeAsyncAppSettingsRequest
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request.TranscribeAsyncClientConfigurationMessageRequest
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncSchemaResponse
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request.TranscribeAsyncVoiceEditingAppSettingsRequest
+import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAction
+import nl.attendi.attendispeechserviceexample.examples.mapper.TranscribeAsyncActionMapper
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -73,7 +75,7 @@ class AttendiAsyncTranscribePlugin(
     /**
      * Called when a message is received from the server.
      */
-    private val onIncomingMessage: (TranscribeAsyncSchemaResponse, state: AttendiMicrophoneState) -> Unit,
+    private val onIncomingMessage: (List<TranscribeAsyncAction>, state: AttendiMicrophoneState) -> Unit,
 ) : AttendiMicrophonePlugin {
     private val client = AttendiClient(apiConfig)
 
@@ -135,8 +137,9 @@ class AttendiAsyncTranscribePlugin(
                 private val json = Json { ignoreUnknownKeys = true }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    val deserialized = json.decodeFromString<TranscribeAsyncSchemaResponse>(text)
-                    onIncomingMessage(deserialized, state)
+                    val response = json.decodeFromString<TranscribeAsyncSchemaResponse>(text)
+                    val model = TranscribeAsyncActionMapper.map(response)
+                    onIncomingMessage(model, state)
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
