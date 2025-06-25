@@ -1,0 +1,19 @@
+{
+  "actions": [
+    {
+      "type": "update_annotation",
+      "parameters": {
+        "type": "entity",
+        "parameters": {
+          "text": "Albert",
+          "type": "name"
+        },
+        "id": "rf262d26-80bd-41d9-97c1-1f9876fa7730",
+        "startCharacterIndex": 0,
+        "endCharacterIndex": 0
+      },
+      "id": "17ca2023-cc1a-4f33-a077-9401ba621c15",
+      "index": 0
+    }
+  ]
+}

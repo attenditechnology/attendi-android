@@ -1,0 +1,15 @@
+{
+  "actions": [
+    {
+      "type": "add_annotation",
+      "parameters": {
+        "type": "transcription_tentative",
+        "id": "0e74a828-9f62-448f-842c-45bff04d99a3",
+        "startCharacterIndex": 0,
+        "endCharacterIndex": 5
+      },
+      "id": "0d42a586-9f65-4bc1-925c-4361ef4a33cc",
+      "index": 0
+    }
+  ]
+}

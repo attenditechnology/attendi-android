@@ -1,0 +1,33 @@
+{
+  "actions": [
+    {
+      "type": "remove_annotation",
+      "parameters": {
+        "id": "22ab4ed5-1ed2-4e6a-bde4-7e5e4005f129"
+      },
+      "id": "f59412fd-90db-402d-a96c-09ece06aba0f",
+      "index": 35
+    },
+    {
+      "type": "replace_text",
+      "parameters": {
+        "startCharacterIndex": 19,
+        "endCharacterIndex": 22,
+        "text": " een mg"
+      },
+      "id": "08665124-0100-45ff-97b0-fff6dd118a88",
+      "index": 36
+    },
+    {
+      "type": "add_annotation",
+      "parameters": {
+        "type": "transcription_tentative",
+        "id": "e870b00f-c9d0-435c-8997-686bc6c9cb86",
+        "startCharacterIndex": 19,
+        "endCharacterIndex": 26
+      },
+      "id": "3f34eb1a-4d10-4bc3-9c34-b40a7624d57b",
+      "index": 37
+    }
+  ]
+}
