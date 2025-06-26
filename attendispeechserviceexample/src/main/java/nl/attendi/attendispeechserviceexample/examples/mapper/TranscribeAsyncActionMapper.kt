@@ -18,8 +18,26 @@ import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAs
 import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncUpdateAnnotationParameters
 import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncUpdateAnnotationType
 
+/**
+ * Utility object responsible for mapping a [TranscribeAsyncResponse]
+ * to a list of [TranscribeAsyncAction]s.
+ *
+ * This mapper was implemented manually rather than using a JSON schema-based code generator
+ * to reduce cognitive overhead and improve maintainability. JSON schema generators often
+ * produce different outputs for Kotlin and Swift, leading to inconsistencies between platforms
+ * in a multiplatform codebase.
+ *
+ * By mapping manually, we ensure a consistent and predictable model structure across platforms,
+ * which simplifies testing, debugging, and long-term evolution of the data layer.
+ */
 object TranscribeAsyncActionMapper {
 
+    /**
+     * Maps a [TranscribeAsyncResponse] to a list of [TranscribeAsyncAction]s.
+     *
+     * @param response The response received from the transcription service.
+     * @return A list of domain-level transcription actions.
+     */
     fun map(response: TranscribeAsyncResponse): List<TranscribeAsyncAction> {
         return response.actions.map { action ->
             when (action.type) {
