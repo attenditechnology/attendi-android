@@ -2,7 +2,7 @@ package nl.attendi.attendispeechserviceexample.examples.mapper
 
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncSchemaResponse
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncResponse
 import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAction
 import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAddAnnotationEntityType
 import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAddAnnotationIntentStatus
@@ -17,9 +17,9 @@ class TranscribeAsyncActionMapperTests {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun makeResponse(fileName: String) : TranscribeAsyncSchemaResponse {
+    private fun makeResponse(fileName: String) : TranscribeAsyncResponse {
         val jsonResponse = JsonFileReader.read("data/transcribeasyncservice/dto/response/${fileName}")
-        return json.decodeFromString<TranscribeAsyncSchemaResponse>(jsonResponse)
+        return json.decodeFromString<TranscribeAsyncResponse>(jsonResponse)
     }
 
     @Test

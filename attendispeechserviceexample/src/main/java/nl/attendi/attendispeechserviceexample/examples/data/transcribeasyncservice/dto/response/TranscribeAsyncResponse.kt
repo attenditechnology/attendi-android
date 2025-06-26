@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
  * A response that is sent to the end user from Attendi's transcription API
  */
 @Serializable
-data class TranscribeAsyncSchemaResponse(
+data class TranscribeAsyncResponse(
     val actions: List<TranscribeAsyncAnnotationResponse>
 )
 

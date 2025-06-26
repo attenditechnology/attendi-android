@@ -28,7 +28,7 @@ import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicro
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
 import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request.TranscribeAsyncAppSettingsRequest
 import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request.TranscribeAsyncClientConfigurationMessageRequest
-import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncSchemaResponse
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncResponse
 import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request.TranscribeAsyncVoiceEditingAppSettingsRequest
 import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAction
 import nl.attendi.attendispeechserviceexample.examples.mapper.TranscribeAsyncActionMapper
@@ -137,7 +137,7 @@ class AttendiAsyncTranscribePlugin(
                 private val json = Json { ignoreUnknownKeys = true }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    val response = json.decodeFromString<TranscribeAsyncSchemaResponse>(text)
+                    val response = json.decodeFromString<TranscribeAsyncResponse>(text)
                     val model = TranscribeAsyncActionMapper.map(response)
                     onIncomingMessage(model, state)
                 }

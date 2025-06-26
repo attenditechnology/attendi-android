@@ -5,7 +5,7 @@ import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservi
 import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncAnnotationIntentStatusResponse
 import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncAnnotationParameterTypeResponse
 import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncAnnotationResponse
-import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncSchemaResponse
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncResponse
 import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAction
 import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncActionData
 import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAddAnnotationEntityType
@@ -20,7 +20,7 @@ import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAs
 
 object TranscribeAsyncActionMapper {
 
-    fun map(response: TranscribeAsyncSchemaResponse): List<TranscribeAsyncAction> {
+    fun map(response: TranscribeAsyncResponse): List<TranscribeAsyncAction> {
         return response.actions.map { action ->
             when (action.type) {
                 TranscribeAsyncActionTypeResponse.ADD_ANNOTATION -> {
