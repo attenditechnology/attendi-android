@@ -1,0 +1,32 @@
+{
+  "actions": [
+    {
+      "type": "add_annotation",
+      "parameters": {
+        "type": "intent",
+        "parameters": {
+          "status": "pending"
+        },
+        "id": "af262d26-80bd-41d9-97c1-1f9876fa7730",
+        "startCharacterIndex": 0,
+        "endCharacterIndex": 8
+      },
+      "id": "07ca2023-cc1a-4f33-a077-9401ba621c15",
+      "index": 0
+    },
+    {
+      "type": "add_annotation",
+      "parameters": {
+        "type": "intent",
+        "parameters": {
+          "status": "recognized"
+        },
+        "id": "af262d26-80bd-41d9-97c1-1f9876fa7731",
+        "startCharacterIndex": 0,
+        "endCharacterIndex": 8
+      },
+      "id": "07ca2023-cc1a-4f33-a077-9401ba621c16",
+      "index": 1
+    }
+  ]
+}

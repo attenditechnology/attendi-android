@@ -19,16 +19,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNames
 import nl.attendi.attendispeechservice.client.AttendiClient
 import nl.attendi.attendispeechservice.client.TranscribeAPIConfig
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request.TranscribeAsyncAppSettingsRequest
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request.TranscribeAsyncClientConfigurationMessageRequest
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncResponse
+import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request.TranscribeAsyncVoiceEditingAppSettingsRequest
+import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAction
+import nl.attendi.attendispeechserviceexample.examples.mapper.TranscribeAsyncActionMapper
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,61 +47,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 const val WEBSOCKET_NORMAL_CLOSURE_CODE = 1000
-
-/**
- * This message is sent to the transcription server when the microphone starts recording.
- */
-@Serializable
-data class ClientConfigurationMessage(
-    /**
-     * Is always "ClientConfiguration" for this message type. However, the serialization somehow
-     * doesn't include the messageType in the JSON when we use a default value for the field.
-     */
-    val type: String,
-    /**
-     * The model to use for transcription. If not specified, the backend uses a default model
-     * specified for the customer.
-     */
-    val model: String?,
-    /**
-     * Allows for associating multiple transcriptions into `sessions` and `reports`.
-     */
-    val reportUuid: String?,
-    val sessionUuid: String?
-)
-
-/**
- * Data model for messages from the transcription websocket server.
- */
-@Serializable
-data class IncomingTranscriptionMessage @OptIn(ExperimentalSerializationApi::class) constructor(
-    val type: IncomingTranscriptionMessageType, val text: String
-)
-
-@OptIn(ExperimentalSerializationApi::class)
-@Serializable
-enum class IncomingTranscriptionMessageType {
-    // Anticipating changing the names of the message types (current ones are `UnprocessedSegment`,
-    // `ProcessedSegment`, `ProcessedStream`)
-    /**
-     * The intermediate segments that can still change.
-     */
-    @JsonNames("tentativeSegment", "UnprocessedSegment")
-    TentativeSegment,
-
-    /**
-     * Intermediate segments that are final. Some more postprocessing is usually done on these segments.
-     */
-    @JsonNames("finalSegment", "ProcessedSegment")
-    FinalSegment,
-
-    /**
-     * The final transcription of the audio stream. This can be used to replace the text in the UI
-     * in the end.
-     */
-    @JsonNames("completedStream", "ProcessedStream")
-    CompletedStream
-}
 
 /**
  * The time to wait for the server to close the socket after the end of the audio stream is sent.
@@ -127,7 +75,7 @@ class AttendiAsyncTranscribePlugin(
     /**
      * Called when a message is received from the server.
      */
-    private val onIncomingMessage: (IncomingTranscriptionMessage, state: AttendiMicrophoneState) -> Unit,
+    private val onIncomingMessage: (List<TranscribeAsyncAction>, state: AttendiMicrophoneState) -> Unit,
 ) : AttendiMicrophonePlugin {
     private val client = AttendiClient(apiConfig)
 
@@ -153,7 +101,8 @@ class AttendiAsyncTranscribePlugin(
             val socketUrl = "$socketBaseUrl/v1/speech/transcribe/stream"
 
             val request = Request.Builder().url(socketUrl)
-                .addHeader("Authorization", "Bearer $authenticationToken").build()
+                .addHeader("Authorization", "Bearer $authenticationToken")
+                .build()
 
             // It's possible that the websocket connection takes some time to establish. If we already
             // start recording, it's possible we send a lot of audio at once, which can result in
@@ -168,23 +117,29 @@ class AttendiAsyncTranscribePlugin(
                     connectionSuccessful = true
                     latch.countDown()
                     val configMessage = Json.encodeToString(
-                        ClientConfigurationMessage(
-                            // TODO: Use a default for the messageType. But somehow the serialization then doesn't
-                            //  include the messageType in the JSON. So for now we set it explicitly to "ClientConfiguration".
-                            type = "ClientConfiguration",
-                            // TODO: I don't think it's always necessary to include the model
+                        TranscribeAsyncClientConfigurationMessageRequest(
+                            type = "configuration",
                             model = "ResidentialCare",
-                            reportUuid = reportUUID.toString(),
-                            sessionUuid = sessionUUID.toString()
+                            reportId = reportUUID.toString(),
+                            sessionId = sessionUUID.toString(),
+                            features = TranscribeAsyncAppSettingsRequest(
+                                voiceEditing = TranscribeAsyncVoiceEditingAppSettingsRequest(
+                                    isEnabled = false,
+                                    useAttendiEntityRecognitionModel = false
+                                )
+                            )
                         )
                     )
 
                     webSocket.send(configMessage)
                 }
 
+                private val json = Json { ignoreUnknownKeys = true }
+
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    val deserialized = Json.decodeFromString<IncomingTranscriptionMessage>(text)
-                    onIncomingMessage(deserialized, state)
+                    val response = json.decodeFromString<TranscribeAsyncResponse>(text)
+                    val model = TranscribeAsyncActionMapper.map(response)
+                    onIncomingMessage(model, state)
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {

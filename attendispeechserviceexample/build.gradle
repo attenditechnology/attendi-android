@@ -4,6 +4,14 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
+def attendiCustomerKey = localProperties.getProperty("ATTENDI_CUSTOMER_KEY", "")
+
 android {
     compileSdk 33
 
@@ -19,6 +27,7 @@ android {
         vectorDrawables {
             useSupportLibrary true
         }
+        buildConfigField "String", "ATTENDI_CUSTOMER_KEY", "\"${attendiCustomerKey}\""
     }
 
     buildTypes {
@@ -36,6 +45,7 @@ android {
     }
     buildFeatures {
         compose true
+        buildConfig true
     }
     composeOptions {
         kotlinCompilerExtensionVersion compose_version

@@ -1,0 +1,14 @@
+{
+  "actions": [
+    {
+      "type": "replace_text",
+      "parameters": {
+        "startCharacterIndex": 0,
+        "endCharacterIndex": 0,
+        "text": "hallo"
+      },
+      "id": "b05bddd0-0577-47d6-b65b-13170c27596a",
+      "index": 0
+    }
+  ]
+}

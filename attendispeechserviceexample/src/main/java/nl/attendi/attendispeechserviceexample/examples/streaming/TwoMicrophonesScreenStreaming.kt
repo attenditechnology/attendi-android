@@ -37,14 +37,11 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,6 +54,7 @@ import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicro
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
 import nl.attendi.attendispeechserviceexample.exampleAPIConfig
 import nl.attendi.attendispeechserviceexample.examples.plugins.StopTranscriptionOnPausePlugin
+import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAction
 
 /**
  * This screen and the async transcribe plugin implementation below serves as an example how the streaming
@@ -193,7 +191,8 @@ fun TwoMicrophonesScreenStreaming(
                 plugins = listOf(
                     AttendiErrorPlugin(),
                     StopTranscriptionOnPausePlugin(viewModel.viewModelScope),
-                    AttendiAsyncTranscribePlugin(apiConfig = exampleAPIConfig,
+                    AttendiAsyncTranscribePlugin(
+                        apiConfig = exampleAPIConfig,
                         onIncomingMessage = { message, _ ->
                             viewModel.handleIncomingShortMessage(
                                 message, shortTextSelectionBeforeLoseFocusAndStreaming
@@ -241,8 +240,7 @@ fun TwoMicrophonesScreenStreaming(
                     .weight(1f)
                     .padding(0.dp)
                     .onFocusChanged { largeTextFieldHasFocus = it.isFocused }
-                    .testTag("TwoMicrophonesScreenStreamingLargeTextField")
-                ,
+                    .testTag("TwoMicrophonesScreenStreamingLargeTextField"),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -254,10 +252,11 @@ fun TwoMicrophonesScreenStreaming(
                 plugins = listOf(
                     AttendiErrorPlugin(),
                     StopTranscriptionOnPausePlugin(viewModel.viewModelScope),
-                    AttendiAsyncTranscribePlugin(apiConfig = exampleAPIConfig,
-                        onIncomingMessage = { message, _ ->
+                    AttendiAsyncTranscribePlugin(
+                        apiConfig = exampleAPIConfig,
+                        onIncomingMessage = { actions, _ ->
                             viewModel.handleIncomingLargeMessage(
-                                message, largeTextSelectionBeforeLoseFocusAndStreaming
+                                actions, largeTextSelectionBeforeLoseFocusAndStreaming
                             )
                         },
                         onSocketClosing = { _, code, _, _ ->
@@ -281,7 +280,7 @@ fun TwoMicrophonesScreenStreaming(
 
 internal fun buildStreamingTranscriptAnnotatedString(
     currentText: String,
-    receivedMessages: List<IncomingTranscriptionMessage>,
+    receivedMessages: List<TranscribeAsyncAction>,
     selection: TextRange? = null
 ): AnnotatedString {
     val styledTranscript = buildStyledTranscript(receivedMessages)
@@ -336,138 +335,52 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
     val largeText: StateFlow<TextFieldValue> = _largeText.asStateFlow()
 
     private val _largeTextReceivedMessages =
-        MutableStateFlow(emptyList<IncomingTranscriptionMessage>())
-    val largeTextReceivedMessages: StateFlow<List<IncomingTranscriptionMessage>> =
+        MutableStateFlow(emptyList<TranscribeAsyncAction>())
+    val largeTextReceivedMessages: StateFlow<List<TranscribeAsyncAction>> =
         _largeTextReceivedMessages.asStateFlow()
 
     private val _shortText = MutableStateFlow(TextFieldValue())
     val shortText: StateFlow<TextFieldValue> = _shortText.asStateFlow()
 
     private val _shortTextReceivedMessages =
-        MutableStateFlow(emptyList<IncomingTranscriptionMessage>())
-    val shortTextReceivedMessages: StateFlow<List<IncomingTranscriptionMessage>> =
+        MutableStateFlow(emptyList<TranscribeAsyncAction>())
+    val shortTextReceivedMessages: StateFlow<List<TranscribeAsyncAction>> =
         _shortTextReceivedMessages.asStateFlow()
 
     fun updateLargeText(value: TextFieldValue) {
         _largeText.value = value
     }
 
-    private fun updateLargeTextReceivedMessages(value: List<IncomingTranscriptionMessage>) {
+    private fun updateLargeTextReceivedMessages(value: List<TranscribeAsyncAction>) {
         _largeTextReceivedMessages.value = value
     }
 
     fun handleIncomingLargeMessage(
-        message: IncomingTranscriptionMessage, selectionBeforeStartingStreaming: TextRange?
+        actions: List<TranscribeAsyncAction>, selectionBeforeStartingStreaming: TextRange?
     ) {
-        val currentText = _largeText.value
-
-        val newText = maybeUpdateText(
-            message, currentText, _largeTextReceivedMessages.value, selectionBeforeStartingStreaming
-        )
-
-        val newReceivedMessages =
-            updateReceivedTranscriptionMessages(_largeTextReceivedMessages.value, message)
-
-        // Don't update the text if it's the same as the current text.
-        if (newText != currentText) updateLargeText(newText)
-
-        updateLargeTextReceivedMessages(newReceivedMessages)
+        // TODO Handle incoming messages
     }
 
     fun onLargeTextSocketFailure(selectionBeforeStartingStreaming: TextRange?) {
-        // There's a socket failure, but we haven't reached the end of the stream yet.
-        // We should still merge what we can.
-        if (_largeTextReceivedMessages.value.isNotEmpty()) {
-            _largeTextReceivedMessages.value.joinToString(" ") { it.text }.let {
-                updateLargeText(
-                    mergeTextFieldValueAtSelection(
-                        _largeText.value, it, selectionBeforeStartingStreaming
-                    )
-                )
-            }
-        }
-
-        // Manually clear the received messages, since we can't continue the stream.
-        updateLargeTextReceivedMessages(emptyList())
+        // TODO: Handle socket failure
     }
 
     fun updateShortText(value: TextFieldValue) {
         _shortText.value = value
     }
 
-    private fun updateShortTextReceivedMessages(value: List<IncomingTranscriptionMessage>) {
+    private fun updateShortTextReceivedMessages(value: List<TranscribeAsyncAction>) {
         _shortTextReceivedMessages.value = value
     }
 
     fun handleIncomingShortMessage(
-        message: IncomingTranscriptionMessage, selectionBeforeStartingStreaming: TextRange?
+        actions: List<TranscribeAsyncAction>, selectionBeforeStartingStreaming: TextRange?
     ) {
-        val currentText = _shortText.value
-
-        val newText = maybeUpdateText(
-            message, currentText, _shortTextReceivedMessages.value, selectionBeforeStartingStreaming
-        )
-
-        val newReceivedMessages =
-            updateReceivedTranscriptionMessages(_shortTextReceivedMessages.value, message)
-
-        // Don't update the text if it's the same as the current text.
-        if (newText != currentText) updateShortText(newText)
-
-        updateShortTextReceivedMessages(newReceivedMessages)
+        // TODO: Handle incoming short messages
     }
 
     fun onShortTextSocketFailure(selectionBeforeStartingStreaming: TextRange?) {
-        if (_shortTextReceivedMessages.value.isNotEmpty()) {
-            // There's a socket failure, but we haven't reached the end of the stream yet.
-            // We should still merge what we can.
-            _shortTextReceivedMessages.value.joinToString(" ") { it.text }.let {
-                updateShortText(
-                    mergeTextFieldValueAtSelection(
-                        _shortText.value, it, selectionBeforeStartingStreaming
-                    )
-                )
-            }
-        }
-
-        // Manually clear the received messages, since we can't continue the stream.
-        updateShortTextReceivedMessages(emptyList())
-    }
-
-    /**
-     * Return an updated text field value, updated based on an incoming message.
-     *
-     * If the message is a `CompletedStream` message, its text replaces the current text.
-     * If the selection is not collapsed (i.e. a word is selected), we remove the selection
-     * and set the cursor to the selection's start position. It doesn't make sense to keep
-     * the selection when we start streaming, since the previously selected is replaced.
-     *
-     * Otherwise, return the original text.
-     */
-    private fun maybeUpdateText(
-        message: IncomingTranscriptionMessage,
-        currentText: TextFieldValue,
-        receivedMessages: List<IncomingTranscriptionMessage>,
-        selectionBeforeStartingStreaming: TextRange?
-    ): TextFieldValue {
-        var newText = currentText
-
-        // If we start streaming at a selection, remove the selection by its start position. It can
-        // be a bit annoying to have the selection still there when we start streaming.
-        if (receivedMessages.isNotEmpty() && !currentText.selection.collapsed) {
-            return currentText.copy(
-                selection = TextRange(currentText.selection.start)
-            )
-        }
-
-        // Replace all current text if we receive a CompletedStream message.
-        if (message.type == IncomingTranscriptionMessageType.CompletedStream && message.text.isNotEmpty()) {
-            newText = mergeTextFieldValueAtSelection(
-                currentText, message.text, selectionBeforeStartingStreaming
-            )
-        }
-
-        return newText
+        // TODO: Handle socket failure
     }
 
     private fun mergeTextFieldValueAtSelection(
@@ -504,68 +417,6 @@ class TwoMicrophonesScreenStreamingViewModel : ViewModel() {
 }
 
 /**
- * Return a new list of received messages, based on the current list of received transcription messages
- * and a new message.
- *
- * The rules are as follows:
- * - If the new message is of type `CompletedStream`, we clear the current list of received messages.
- * - If the previous message was a `TentativeSegment`, we replace it with the new message. Otherwise,
- * we add the new message to the list.
- * - `FinalSegment` messages are appended to the list and are never replaced (until a `CompletedStream`
- * message is received).
- *
- * For instance, if the current `receivedMessages` list is
- * ```
- * [
- *   IncomingTranscriptionMessage(IncomingTranscriptionMessageType.FinalSegment, "Hello"),
- *   IncomingTranscriptionMessage(IncomingTranscriptionMessageType.TentativeSegment, "world"),
- * ]
- * ```
- * and a new message of type `TentativeSegment` or `FinalSegment` with text "!"
- * comes in, we *replace* the last message in the list with the new message
- * (since the previous item is an `TentativeSegment`). If we added a `FinalSegment`,
- * the new list will then be
- * ```
- * [
- *  IncomingTranscriptionMessage(IncomingTranscriptionMessageType.FinalSegment, "Hello"),
- *  IncomingTranscriptionMessage(IncomingTranscriptionMessageType.FinalSegment, "!"),
- *  ]
- *  ```
- */
-internal fun updateReceivedTranscriptionMessages(
-    currentMessages: List<IncomingTranscriptionMessage>, message: IncomingTranscriptionMessage
-): List<IncomingTranscriptionMessage> {
-    val result = currentMessages.toMutableList()
-
-    if (message.type == IncomingTranscriptionMessageType.CompletedStream) {
-        // TODO: it seems like `CompletedStream` messages are sent twice by the transcription server, where
-        //  the first message is empty text. This seems to be a bug in the server and should not happen. For now we
-        //  filter out empty messages.
-        if (currentMessages.isNotEmpty() && message.text.isEmpty()) {
-            return result
-        }
-
-        // Reset the received messages, as the current stream is done.
-        return emptyList()
-    }
-
-    // Ignore empty segments, which clutter the UX.
-    if (message.text.isEmpty()) return result
-
-    val previousMessage = currentMessages.lastOrNull() ?: return listOf(message)
-
-    if (previousMessage.type == IncomingTranscriptionMessageType.TentativeSegment) {
-        // We replace the last message if it was an TentativeSegment, since it
-        // is tentative and should be overwritten by newer messages.
-        return currentMessages.dropLast(1) + message
-    }
-
-    // Now we know that the previous message was a FinalSegment (since we returned early
-    // for the other message types), so we only add a new message.
-    return currentMessages + message
-}
-
-/**
  * Build an `AnnotatedString` from a list of received transcription messages.
  *
  * We give different styles to the different types of messages. These styles can be configured
@@ -574,49 +425,9 @@ internal fun updateReceivedTranscriptionMessages(
  * We add a space between the messages, but not after the last message.
  */
 fun buildStyledTranscript(
-    receivedMessages: List<IncomingTranscriptionMessage>,
-    styles: Map<IncomingTranscriptionMessageType, SpanStyle>? = null
+    receivedMessages: List<TranscribeAsyncAction>
 ): AnnotatedString {
     return buildAnnotatedString {
-        receivedMessages.forEachIndexed { index, message ->
-            val messageStyle = styles?.get(message.type)
-
-            when (message.type) {
-                IncomingTranscriptionMessageType.TentativeSegment -> {
-                    withStyle(
-                        messageStyle ?: SpanStyle(
-                            color = Color(24, 147, 255),
-                            fontStyle = FontStyle.Italic
-                        )
-                    ) {
-                        append(message.text)
-                    }
-                }
-
-                IncomingTranscriptionMessageType.FinalSegment -> {
-                    withStyle(
-                        messageStyle ?: SpanStyle(
-                            color = Color(118, 118, 118),
-                            fontStyle = FontStyle.Italic
-                        )
-                    ) {
-                        append(message.text)
-                    }
-                }
-
-                // We should actually never see a `CompletedStream` here, as we clear the list
-                // received messages when we receive it. We leave it in as an example.
-                IncomingTranscriptionMessageType.CompletedStream -> {
-                    withStyle(style = SpanStyle(color = Color.Black)) {
-                        append(message.text)
-                    }
-                }
-            }
-
-            // Add a space between the messages, but not after the last message.
-            if (index < receivedMessages.size - 1) {
-                append(" ")
-            }
-        }
+        // TODO: Build Styled transcript
     }
 }
