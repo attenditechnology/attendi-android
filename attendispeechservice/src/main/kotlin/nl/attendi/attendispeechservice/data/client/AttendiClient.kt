@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-package nl.attendi.attendispeechservice.client
+package nl.attendi.attendispeechservice.data.client
 
 import kotlinx.serialization.Serializable
 import java.util.UUID

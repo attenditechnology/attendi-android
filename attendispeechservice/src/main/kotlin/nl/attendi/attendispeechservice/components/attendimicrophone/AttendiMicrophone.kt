@@ -83,9 +83,9 @@ import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.*
 import nl.attendi.attendispeechservice.R
-import nl.attendi.attendispeechservice.audio.AUDIO_SAMPLE_RATE
-import nl.attendi.attendispeechservice.audio.AttendiRecorder
-import nl.attendi.attendispeechservice.audio.pcmToWav
+import nl.attendi.attendispeechservice.data.audio.AUDIO_SAMPLE_RATE
+import nl.attendi.attendispeechservice.data.audio.AttendiRecorder
+import nl.attendi.attendispeechservice.data.audio.pcmToWav
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AudioNotificationPlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.VolumeFeedbackPlugin

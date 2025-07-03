@@ -14,8 +14,8 @@
 
 package nl.attendi.attendispeechservice.components.attendimicrophone.plugins
 
-import nl.attendi.attendispeechservice.client.AttendiClient
-import nl.attendi.attendispeechservice.client.TranscribeAPIConfig
+import nl.attendi.attendispeechservice.data.client.AttendiClient
+import nl.attendi.attendispeechservice.data.client.TranscribeAPIConfig
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import java.util.Base64
 

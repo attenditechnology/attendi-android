@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-package nl.attendi.attendispeechservice.audio
+package nl.attendi.attendispeechservice.data.audio
 
 import java.io.ByteArrayOutputStream
 import java.io.IOException

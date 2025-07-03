@@ -57,8 +57,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import nl.attendi.attendispeechservice.R
-import nl.attendi.attendispeechservice.client.ModelType
-import nl.attendi.attendispeechservice.client.TranscribeAPIConfig
+import nl.attendi.attendispeechservice.data.client.ModelType
+import nl.attendi.attendispeechservice.data.client.TranscribeAPIConfig
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import nl.attendi.attendispeechservice.components.attendimicrophone.MenuGroup
