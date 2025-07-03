@@ -66,7 +66,7 @@ data class AttendiStreamState(
                 }
 
                 is TranscribeAsyncAction.RemoveAnnotation -> {
-                    currentAnnotations.removeIf { action.parameters.id == it.parameters.id }
+                    currentAnnotations.removeIf { action.parameters.id == it.actionData.id }
                 }
 
                 is TranscribeAsyncAction.ReplaceText -> {
@@ -86,18 +86,12 @@ data class AttendiStreamState(
         action: TranscribeAsyncAction.UpdateAnnotation
     ) {
         val index =
-            annotations.indexOfFirst { action.parameters.id == it.parameters.id }
+            annotations.indexOfFirst { action.parameters.id == it.actionData.id }
         if (index != -1) {
             val oldAnnotation = annotations[index]
             val updatedAnnotation = oldAnnotation.copy(
-                action = oldAnnotation.action.copy(
-                    id = oldAnnotation.action.id,
-                    index = oldAnnotation.action.index
-                ),
-                parameters = oldAnnotation.parameters.copy(
-                    startCharacterIndex = oldAnnotation.parameters.startCharacterIndex,
-                    endCharacterIndex = oldAnnotation.parameters.endCharacterIndex
-                )
+                actionData = action.actionData,
+                parameters = action.parameters
             )
             annotations[index] = updatedAnnotation
         }

@@ -65,7 +65,7 @@ object TranscribeAsyncActionMapper {
         return when (parameters.type) {
             TranscribeAsyncAnnotationParameterTypeResponse.TRANSCRIPTION_TENTATIVE -> {
                 TranscribeAsyncAction.AddAnnotation(
-                    action = TranscribeAsyncActionData(
+                    actionData = TranscribeAsyncActionData(
                         id = action.id,
                         index = action.index
                     ),
@@ -89,7 +89,7 @@ object TranscribeAsyncActionMapper {
                     TranscribeAsyncAnnotationIntentStatusResponse.RECOGNIZED -> TranscribeAsyncAddAnnotationIntentStatus.RECOGNIZED
                 }
                 TranscribeAsyncAction.AddAnnotation(
-                    action = TranscribeAsyncActionData(
+                    actionData = TranscribeAsyncActionData(
                         id = action.id,
                         index = action.index
                     ),
@@ -113,7 +113,7 @@ object TranscribeAsyncActionMapper {
                 }
 
                 TranscribeAsyncAction.AddAnnotation(
-                    action = TranscribeAsyncActionData(
+                    actionData = TranscribeAsyncActionData(
                         id = action.id,
                         index = action.index
                     ),
@@ -142,7 +142,7 @@ object TranscribeAsyncActionMapper {
         return when (parameters.type) {
             TranscribeAsyncAnnotationParameterTypeResponse.TRANSCRIPTION_TENTATIVE -> {
                 TranscribeAsyncAction.UpdateAnnotation(
-                    action = TranscribeAsyncActionData(
+                    actionData = TranscribeAsyncActionData(
                         id = action.id,
                         index = action.index
                     ),
@@ -165,7 +165,7 @@ object TranscribeAsyncActionMapper {
                     TranscribeAsyncAnnotationEntityTypeResponse.NAME -> TranscribeAsyncUpdateAnnotationEntityType.NAME
                 }
                 TranscribeAsyncAction.UpdateAnnotation(
-                    action = TranscribeAsyncActionData(
+                    actionData = TranscribeAsyncActionData(
                         id = action.id,
                         index = action.index
                     ),
@@ -196,7 +196,7 @@ object TranscribeAsyncActionMapper {
     private fun mapRemoveAnnotation(action: TranscribeAsyncAnnotationResponse): TranscribeAsyncAction {
         val parameters = action.parameters ?: error("Missing required field: 'parameters' in RemoveAnnotation")
         return TranscribeAsyncAction.RemoveAnnotation(
-            action = TranscribeAsyncActionData(
+            actionData = TranscribeAsyncActionData(
                 id = action.id,
                 index = action.index
             ),
@@ -210,7 +210,7 @@ object TranscribeAsyncActionMapper {
     private fun mapReplaceTextAnnotation(action: TranscribeAsyncAnnotationResponse): TranscribeAsyncAction {
         val parameters = action.parameters ?: error("Missing required field: 'parameters' in ReplaceTextAnnotation")
         return TranscribeAsyncAction.ReplaceText(
-            action = TranscribeAsyncActionData(
+            actionData = TranscribeAsyncActionData(
                 id = action.id,
                 index = action.index
             ),

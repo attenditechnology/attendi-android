@@ -11,7 +11,7 @@ object CustomMessageDecoder : AttendiMessageDecoder {
         val list: MutableList<TranscribeAsyncAction> = mutableListOf()
         list.add(
             TranscribeAsyncAction.ReplaceText(
-                action = TranscribeAsyncActionData(id = "1", index = 0),
+                actionData = TranscribeAsyncActionData(id = "1", index = 0),
                 parameters = TranscribeAsyncReplaceTextParameters(
                     startCharacterIndex = 0,
                     endCharacterIndex = 0,

@@ -8,10 +8,10 @@ package nl.attendi.attendispeechservice.domain.model.transcribeasync
  *
  */
 sealed class TranscribeAsyncAction {
-    data class AddAnnotation(val action: TranscribeAsyncActionData, val parameters: TranscribeAsyncAddAnnotationParameters) : TranscribeAsyncAction()
-    data class RemoveAnnotation(val action: TranscribeAsyncActionData, val parameters: TranscribeAsyncRemoveAnnotationParameters) : TranscribeAsyncAction()
-    data class UpdateAnnotation(val action: TranscribeAsyncActionData, val parameters: TranscribeAsyncUpdateAnnotationParameters) : TranscribeAsyncAction()
-    data class ReplaceText(val action: TranscribeAsyncActionData, val parameters: TranscribeAsyncReplaceTextParameters) : TranscribeAsyncAction()
+    data class AddAnnotation(val actionData: TranscribeAsyncActionData, val parameters: TranscribeAsyncAddAnnotationParameters) : TranscribeAsyncAction()
+    data class RemoveAnnotation(val actionData: TranscribeAsyncActionData, val parameters: TranscribeAsyncRemoveAnnotationParameters) : TranscribeAsyncAction()
+    data class UpdateAnnotation(val actionData: TranscribeAsyncActionData, val parameters: TranscribeAsyncUpdateAnnotationParameters) : TranscribeAsyncAction()
+    data class ReplaceText(val actionData: TranscribeAsyncActionData, val parameters: TranscribeAsyncReplaceTextParameters) : TranscribeAsyncAction()
 }
 
 data class TranscribeAsyncActionData(

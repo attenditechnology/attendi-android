@@ -31,8 +31,8 @@ class TranscribeAsyncActionMapperTests {
 
         Assert.assertEquals(1, model.size)
         val addAnnotation = model[0] as TranscribeAsyncAction.AddAnnotation
-        Assert.assertEquals("0d42a586-9f65-4bc1-925c-4361ef4a33cc", addAnnotation.action.id)
-        Assert.assertEquals(0, addAnnotation.action.index)
+        Assert.assertEquals("0d42a586-9f65-4bc1-925c-4361ef4a33cc", addAnnotation.actionData.id)
+        Assert.assertEquals(0, addAnnotation.actionData.index)
         Assert.assertEquals(
             TranscribeAsyncAddAnnotationType.TranscriptionTentative,
             addAnnotation.parameters.type
@@ -50,8 +50,8 @@ class TranscribeAsyncActionMapperTests {
 
         Assert.assertEquals(2, model.size)
         val addAnnotationPending = model[0] as TranscribeAsyncAction.AddAnnotation
-        Assert.assertEquals("07ca2023-cc1a-4f33-a077-9401ba621c15", addAnnotationPending.action.id)
-        Assert.assertEquals(0, addAnnotationPending.action.index)
+        Assert.assertEquals("07ca2023-cc1a-4f33-a077-9401ba621c15", addAnnotationPending.actionData.id)
+        Assert.assertEquals(0, addAnnotationPending.actionData.index)
         val intentPending =
             addAnnotationPending.parameters.type as TranscribeAsyncAddAnnotationType.Intent
         Assert.assertEquals(TranscribeAsyncAddAnnotationIntentStatus.PENDING, intentPending.status)
@@ -65,9 +65,9 @@ class TranscribeAsyncActionMapperTests {
         val addAnnotationRecognized = model[1] as TranscribeAsyncAction.AddAnnotation
         Assert.assertEquals(
             "07ca2023-cc1a-4f33-a077-9401ba621c16",
-            addAnnotationRecognized.action.id
+            addAnnotationRecognized.actionData.id
         )
-        Assert.assertEquals(1, addAnnotationRecognized.action.index)
+        Assert.assertEquals(1, addAnnotationRecognized.actionData.index)
         val intentRecognized =
             addAnnotationRecognized.parameters.type as TranscribeAsyncAddAnnotationType.Intent
         Assert.assertEquals(
@@ -90,8 +90,8 @@ class TranscribeAsyncActionMapperTests {
 
         Assert.assertEquals(1, model.size)
         val addAnnotation = model[0] as TranscribeAsyncAction.AddAnnotation
-        Assert.assertEquals("17ca2023-cc1a-4f33-a077-9401ba621c15", addAnnotation.action.id)
-        Assert.assertEquals(0, addAnnotation.action.index)
+        Assert.assertEquals("17ca2023-cc1a-4f33-a077-9401ba621c15", addAnnotation.actionData.id)
+        Assert.assertEquals(0, addAnnotation.actionData.index)
         val entity = addAnnotation.parameters.type as TranscribeAsyncAddAnnotationType.Entity
         Assert.assertEquals(TranscribeAsyncAddAnnotationEntityType.NAME, entity.type)
         Assert.assertEquals("Albert", entity.text)
@@ -108,8 +108,8 @@ class TranscribeAsyncActionMapperTests {
 
         Assert.assertEquals(1, model.size)
         val updateAnnotation = model[0] as TranscribeAsyncAction.UpdateAnnotation
-        Assert.assertEquals("0d42a586-9f65-4bc1-925c-4361ef4a33cc", updateAnnotation.action.id)
-        Assert.assertEquals(0, updateAnnotation.action.index)
+        Assert.assertEquals("0d42a586-9f65-4bc1-925c-4361ef4a33cc", updateAnnotation.actionData.id)
+        Assert.assertEquals(0, updateAnnotation.actionData.index)
         Assert.assertEquals(
             TranscribeAsyncUpdateAnnotationType.TranscriptionTentative,
             updateAnnotation.parameters.type
@@ -127,8 +127,8 @@ class TranscribeAsyncActionMapperTests {
 
         Assert.assertEquals(1, model.size)
         val updateAnnotation = model[0] as TranscribeAsyncAction.UpdateAnnotation
-        Assert.assertEquals("17ca2023-cc1a-4f33-a077-9401ba621c15", updateAnnotation.action.id)
-        Assert.assertEquals(0, updateAnnotation.action.index)
+        Assert.assertEquals("17ca2023-cc1a-4f33-a077-9401ba621c15", updateAnnotation.actionData.id)
+        Assert.assertEquals(0, updateAnnotation.actionData.index)
         val entity = updateAnnotation.parameters.type as TranscribeAsyncUpdateAnnotationType.Entity
         Assert.assertEquals(TranscribeAsyncUpdateAnnotationEntityType.NAME, entity.type)
         Assert.assertEquals("Albert", entity.text)
@@ -145,8 +145,8 @@ class TranscribeAsyncActionMapperTests {
 
         Assert.assertEquals(1, model.size)
         val replaceTextAnnotation = model[0] as TranscribeAsyncAction.ReplaceText
-        Assert.assertEquals("b05bddd0-0577-47d6-b65b-13170c27596a", replaceTextAnnotation.action.id)
-        Assert.assertEquals(0, replaceTextAnnotation.action.index)
+        Assert.assertEquals("b05bddd0-0577-47d6-b65b-13170c27596a", replaceTextAnnotation.actionData.id)
+        Assert.assertEquals(0, replaceTextAnnotation.actionData.index)
         Assert.assertEquals("hallo", replaceTextAnnotation.parameters.text)
         Assert.assertEquals(0, replaceTextAnnotation.parameters.startCharacterIndex)
         Assert.assertEquals(0, replaceTextAnnotation.parameters.endCharacterIndex)
@@ -160,8 +160,8 @@ class TranscribeAsyncActionMapperTests {
 
         Assert.assertEquals(1, model.size)
         val removeAnnotation = model[0] as TranscribeAsyncAction.RemoveAnnotation
-        Assert.assertEquals("1488702d-86a5-4313-89a4-e0589d724933", removeAnnotation.action.id)
-        Assert.assertEquals(0, removeAnnotation.action.index)
+        Assert.assertEquals("1488702d-86a5-4313-89a4-e0589d724933", removeAnnotation.actionData.id)
+        Assert.assertEquals(0, removeAnnotation.actionData.index)
         Assert.assertEquals("0e74a828-9f62-448f-842c-45bff04d99a3", removeAnnotation.parameters.id)
     }
 
@@ -173,20 +173,20 @@ class TranscribeAsyncActionMapperTests {
 
         Assert.assertEquals(3, model.size)
         val removeAnnotation = model[0] as TranscribeAsyncAction.RemoveAnnotation
-        Assert.assertEquals("f59412fd-90db-402d-a96c-09ece06aba0f", removeAnnotation.action.id)
-        Assert.assertEquals(35, removeAnnotation.action.index)
+        Assert.assertEquals("f59412fd-90db-402d-a96c-09ece06aba0f", removeAnnotation.actionData.id)
+        Assert.assertEquals(35, removeAnnotation.actionData.index)
         Assert.assertEquals("22ab4ed5-1ed2-4e6a-bde4-7e5e4005f129", removeAnnotation.parameters.id)
 
         val replaceTextAnnotation = model[1] as TranscribeAsyncAction.ReplaceText
-        Assert.assertEquals("08665124-0100-45ff-97b0-fff6dd118a88", replaceTextAnnotation.action.id)
-        Assert.assertEquals(36, replaceTextAnnotation.action.index)
+        Assert.assertEquals("08665124-0100-45ff-97b0-fff6dd118a88", replaceTextAnnotation.actionData.id)
+        Assert.assertEquals(36, replaceTextAnnotation.actionData.index)
         Assert.assertEquals(" een mg", replaceTextAnnotation.parameters.text)
         Assert.assertEquals(19, replaceTextAnnotation.parameters.startCharacterIndex)
         Assert.assertEquals(22, replaceTextAnnotation.parameters.endCharacterIndex)
 
         val addAnnotation = model[2] as TranscribeAsyncAction.AddAnnotation
-        Assert.assertEquals("3f34eb1a-4d10-4bc3-9c34-b40a7624d57b", addAnnotation.action.id)
-        Assert.assertEquals(37, addAnnotation.action.index)
+        Assert.assertEquals("3f34eb1a-4d10-4bc3-9c34-b40a7624d57b", addAnnotation.actionData.id)
+        Assert.assertEquals(37, addAnnotation.actionData.index)
         Assert.assertEquals(
             TranscribeAsyncAddAnnotationType.TranscriptionTentative,
             addAnnotation.parameters.type
