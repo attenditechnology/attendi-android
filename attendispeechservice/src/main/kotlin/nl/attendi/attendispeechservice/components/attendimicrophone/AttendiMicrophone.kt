@@ -309,7 +309,9 @@ fun AttendiMicrophone(
     // Handle backgrounding and foregrounding of the app. The current intended behavior is that
     // recording is paused when the app is backgrounded, and resumed when the app is foregrounded.
     OnLifecycleEvent { _, event ->
-        for (callback in microphoneState.lifecycleCallbacks) {
+        // If any of the callback() calls modifies the lifecycleCallbacks list (e.g., adds or removes elements), the iterator becomes invalid, and the app will crash with ConcurrentModificationException.
+        // toList() creates a shallow copy, so even if a callback modifies the original list, it doesn't affect the current iteration.
+        for (callback in microphoneState.lifecycleCallbacks.toList()) {
             // TODO: is there a way we can prevent using GlobalScope here?
             // When using `coroutineScope`, sometimes the callbacks are not called here.
             GlobalScope.launch {
@@ -334,7 +336,9 @@ fun AttendiMicrophone(
         if (!firstClickHappened) {
             firstClickHappened = true
             coroutineScope.launch {
-                for (callback in microphoneState.firstClickCallbacks) {
+                // If any of the callback() calls modifies the firstClickCallbacks list (e.g., adds or removes elements), the iterator becomes invalid, and the app will crash with ConcurrentModificationException.
+                // toList() creates a shallow copy, so even if a callback modifies the original list, it doesn't affect the current iteration.
+                for (callback in microphoneState.firstClickCallbacks.toList()) {
                     callback()
                 }
             }
@@ -419,7 +423,9 @@ class AttendiMicrophoneState @OptIn(
     var microphoneUIState: MicrophoneUIState = microphoneUIState
         set(value) {
             field = value
-            for (callback in UIStateCallbacks) {
+            // If any of the callback() calls modifies the UIStateCallbacks list (e.g., adds or removes elements), the iterator becomes invalid, and the app will crash with ConcurrentModificationException.
+            // toList() creates a shallow copy, so even if a callback modifies the original list, it doesn't affect the current iteration.
+            for (callback in UIStateCallbacks.toList()) {
                 callback(value)
             }
         }
@@ -571,7 +577,9 @@ class AttendiMicrophoneState @OptIn(
             recordAudioPermissionState.hasPermission -> {
                 microphoneUIState = MicrophoneUIState.LoadingBeforeRecording
 
-                for (callback in beforeStartRecordingCallbacks) {
+                // If any of the callback() calls modifies the beforeStartRecordingCallbacks list (e.g., adds or removes elements), the iterator becomes invalid, and the app will crash with ConcurrentModificationException.
+                // toList() creates a shallow copy, so even if a callback modifies the original list, it doesn't affect the current iteration.
+                for (callback in beforeStartRecordingCallbacks.toList()) {
                     callback()
                 }
 
@@ -579,7 +587,9 @@ class AttendiMicrophoneState @OptIn(
                     recorder.startRecording()
                 }
 
-                for (callback in startRecordingCallbacks) {
+                // If any of the callback() calls modifies the startRecordingCallbacks list (e.g., adds or removes elements), the iterator becomes invalid, and the app will crash with ConcurrentModificationException.
+                // toList() creates a shallow copy, so even if a callback modifies the original list, it doesn't affect the current iteration.
+                for (callback in startRecordingCallbacks.toList()) {
                     callback()
                 }
 
@@ -645,7 +655,9 @@ class AttendiMicrophoneState @OptIn(
     ) {
         if (microphoneUIState != MicrophoneUIState.Recording) return
 
-        for (callback in beforeStopRecordingCallbacks) {
+        // If any of the callback() calls modifies the beforeStopRecordingCallbacks list (e.g., adds or removes elements), the iterator becomes invalid, and the app will crash with ConcurrentModificationException.
+        // toList() creates a shallow copy, so even if a callback modifies the original list, it doesn't affect the current iteration.
+        for (callback in beforeStopRecordingCallbacks.toList()) {
             callback()
         }
 
@@ -660,7 +672,9 @@ class AttendiMicrophoneState @OptIn(
 
         recorder.stopRecording()
 
-        for (callback in stopRecordingCallbacks) {
+        // If any of the callback() calls modifies the stopRecordingCallbacks list (e.g., adds or removes elements), the iterator becomes invalid, and the app will crash with ConcurrentModificationException.
+        // toList() creates a shallow copy, so even if a callback modifies the original list, it doesn't affect the current iteration.
+        for (callback in stopRecordingCallbacks.toList()) {
             callback()
         }
 
