@@ -6,12 +6,12 @@ import kotlinx.coroutines.launch
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
 
-class StopTranscriptionOnPausePlugin(private val scope: CoroutineScope) : AttendiMicrophonePlugin {
+object StopTranscriptionOnPausePlugin : AttendiMicrophonePlugin {
     override fun activate(state: AttendiMicrophoneState) {
         state.onLifecycle { event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
-                    scope.launch {
+                    state.coroutineScope.launch {
                         state.stop(delayMilliseconds = 0)
                     }
                 }

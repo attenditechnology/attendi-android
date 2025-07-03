@@ -58,15 +58,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
-import nl.attendi.attendispeechservice.client.ModelType
-import nl.attendi.attendispeechservice.client.TranscribeAPIConfig
+import nl.attendi.attendispeechservice.data.client.ModelType
+import nl.attendi.attendispeechservice.data.client.TranscribeAPIConfig
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import nl.attendi.attendispeechservice.components.attendimicrophone.MicrophoneUIState
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiTranscribePlugin
-import nl.attendi.attendispeechserviceexample.examples.streaming.TwoMicrophonesScreenStreaming
+import nl.attendi.attendispeechserviceexample.examples.streaming.twomicrophonesscreen.TwoMicrophonesScreenStreamingScreen
+import nl.attendi.attendispeechserviceexample.examples.streaming.twomicrophonesscreen.TwoMicrophonesScreenStreamingView
 import nl.attendi.attendispeechserviceexample.ui.theme.AttendiSpeechServiceExampleTheme
 
 class MainActivity : ComponentActivity() {
@@ -134,7 +135,7 @@ fun ExampleApp() {
 
         when (screen) {
             Screen.TwoMicrophones -> TwoMicrophonesScreen()
-            Screen.TwoMicrophonesStreaming -> TwoMicrophonesScreenStreaming()
+            Screen.TwoMicrophonesStreaming -> TwoMicrophonesScreenStreamingScreen()
             Screen.HoveringMicrophone -> HoveringMicrophoneScreen()
         }
     }
