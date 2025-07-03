@@ -8,15 +8,12 @@ import nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.r
 import nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.response.TranscribeAsyncResponse
 import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
 import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncActionData
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationEntityType
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationIntentStatus
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationParameters
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationType
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationParameters
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationType
 import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncRemoveAnnotationParameters
 import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncReplaceTextParameters
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncUpdateAnnotationEntityType
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncUpdateAnnotationParameters
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncUpdateAnnotationType
 
 /**
  * Utility object responsible for mapping a [TranscribeAsyncResponse]
@@ -69,14 +66,14 @@ object TranscribeAsyncActionMapper {
                         id = action.id,
                         index = action.index
                     ),
-                    parameters = TranscribeAsyncAddAnnotationParameters(
+                    parameters = TranscribeAsyncAnnotationParameters(
                         id = parameters.id
                             ?: error("Missing required field: 'id' in AddAnnotation TRANSCRIPTION_TENTATIVE Parameters"),
                         startCharacterIndex = parameters.startCharacterIndex
                             ?: error("Missing required field: 'startCharacterIndex' in AddAnnotation TRANSCRIPTION_TENTATIVE Parameters"),
                         endCharacterIndex = parameters.endCharacterIndex
                             ?: error("Missing required field: 'endCharacterIndex' in AddAnnotation TRANSCRIPTION_TENTATIVE Parameters"),
-                        type = TranscribeAsyncAddAnnotationType.TranscriptionTentative
+                        type = TranscribeAsyncAnnotationType.TranscriptionTentative
                     )
                 )
             }
@@ -85,22 +82,22 @@ object TranscribeAsyncActionMapper {
                 val statusResponse = parameters.parameters?.status
                     ?: error("Missing required field: 'status' in AddAnnotation INTENT Parameters")
                 val status = when (statusResponse) {
-                    TranscribeAsyncAnnotationIntentStatusResponse.PENDING -> TranscribeAsyncAddAnnotationIntentStatus.PENDING
-                    TranscribeAsyncAnnotationIntentStatusResponse.RECOGNIZED -> TranscribeAsyncAddAnnotationIntentStatus.RECOGNIZED
+                    TranscribeAsyncAnnotationIntentStatusResponse.PENDING -> TranscribeAsyncAnnotationIntentStatus.PENDING
+                    TranscribeAsyncAnnotationIntentStatusResponse.RECOGNIZED -> TranscribeAsyncAnnotationIntentStatus.RECOGNIZED
                 }
                 TranscribeAsyncAction.AddAnnotation(
                     actionData = TranscribeAsyncActionData(
                         id = action.id,
                         index = action.index
                     ),
-                    parameters = TranscribeAsyncAddAnnotationParameters(
+                    parameters = TranscribeAsyncAnnotationParameters(
                         id = parameters.id
                             ?: error("Missing required field: 'id' in AddAnnotation INTENT Parameters"),
                         startCharacterIndex = parameters.startCharacterIndex
                             ?: error("Missing required field: 'startCharacterIndex' in AddAnnotation INTENT Parameters"),
                         endCharacterIndex = parameters.endCharacterIndex
                             ?: error("Missing required field: 'endCharacterIndex' in AddAnnotation INTENT Parameters"),
-                        type = TranscribeAsyncAddAnnotationType.Intent(status = status)
+                        type = TranscribeAsyncAnnotationType.Intent(status = status)
                     )
                 )
             }
@@ -109,7 +106,7 @@ object TranscribeAsyncActionMapper {
                 val typeResponse = parameters.parameters?.type
                     ?: error("Missing required field: 'type' in AddAnnotation ENTITY Parameters")
                 val type = when (typeResponse) {
-                    TranscribeAsyncAnnotationEntityTypeResponse.NAME -> TranscribeAsyncAddAnnotationEntityType.NAME
+                    TranscribeAsyncAnnotationEntityTypeResponse.NAME -> TranscribeAsyncAnnotationEntityType.NAME
                 }
 
                 TranscribeAsyncAction.AddAnnotation(
@@ -117,14 +114,14 @@ object TranscribeAsyncActionMapper {
                         id = action.id,
                         index = action.index
                     ),
-                    parameters = TranscribeAsyncAddAnnotationParameters(
+                    parameters = TranscribeAsyncAnnotationParameters(
                         id = parameters.id
                             ?: error("Missing required field: 'id' in AddAnnotation ENTITY Parameters"),
                         startCharacterIndex = parameters.startCharacterIndex
                             ?: error("Missing required field: 'startCharacterIndex' in AddAnnotation ENTITY Parameters"),
                         endCharacterIndex = parameters.endCharacterIndex
                             ?: error("Missing required field: 'endCharacterIndex' in AddAnnotation ENTITY Parameters"),
-                        type = TranscribeAsyncAddAnnotationType.Entity(
+                        type = TranscribeAsyncAnnotationType.Entity(
                             type = type,
                             text = parameters.parameters.text
                                 ?: error("Missing required field: 'text' in AddAnnotation ENTITY Parameters")
@@ -146,14 +143,38 @@ object TranscribeAsyncActionMapper {
                         id = action.id,
                         index = action.index
                     ),
-                    parameters = TranscribeAsyncUpdateAnnotationParameters(
+                    parameters = TranscribeAsyncAnnotationParameters(
                         id = parameters.id
                             ?: error("Missing required field: 'id' in UpdateAnnotation TRANSCRIPTION_TENTATIVE Parameters"),
                         startCharacterIndex = parameters.startCharacterIndex
                             ?: error("Missing required field: 'startCharacterIndex' in UpdateAnnotation TRANSCRIPTION_TENTATIVE Parameters"),
                         endCharacterIndex = parameters.endCharacterIndex
                             ?: error("Missing required field: 'endCharacterIndex' in UpdateAnnotation TRANSCRIPTION_TENTATIVE Parameters"),
-                        type = TranscribeAsyncUpdateAnnotationType.TranscriptionTentative
+                        type = TranscribeAsyncAnnotationType.TranscriptionTentative
+                    )
+                )
+            }
+
+            TranscribeAsyncAnnotationParameterTypeResponse.INTENT -> {
+                val statusResponse = parameters.parameters?.status
+                    ?: error("Missing required field: 'status' in UpdateAnnotation INTENT Parameters")
+                val status = when (statusResponse) {
+                    TranscribeAsyncAnnotationIntentStatusResponse.PENDING -> TranscribeAsyncAnnotationIntentStatus.PENDING
+                    TranscribeAsyncAnnotationIntentStatusResponse.RECOGNIZED -> TranscribeAsyncAnnotationIntentStatus.RECOGNIZED
+                }
+                TranscribeAsyncAction.AddAnnotation(
+                    actionData = TranscribeAsyncActionData(
+                        id = action.id,
+                        index = action.index
+                    ),
+                    parameters = TranscribeAsyncAnnotationParameters(
+                        id = parameters.id
+                            ?: error("Missing required field: 'id' in UpdateAnnotation INTENT Parameters"),
+                        startCharacterIndex = parameters.startCharacterIndex
+                            ?: error("Missing required field: 'startCharacterIndex' in UpdateAnnotation INTENT Parameters"),
+                        endCharacterIndex = parameters.endCharacterIndex
+                            ?: error("Missing required field: 'endCharacterIndex' in UpdateAnnotation INTENT Parameters"),
+                        type = TranscribeAsyncAnnotationType.Intent(status = status)
                     )
                 )
             }
@@ -162,31 +183,27 @@ object TranscribeAsyncActionMapper {
                 val typeResponse = parameters.parameters?.type
                     ?: error("Missing required field: 'type' in UpdateAnnotation ENTITY Parameters")
                 val type = when (typeResponse) {
-                    TranscribeAsyncAnnotationEntityTypeResponse.NAME -> TranscribeAsyncUpdateAnnotationEntityType.NAME
+                    TranscribeAsyncAnnotationEntityTypeResponse.NAME -> TranscribeAsyncAnnotationEntityType.NAME
                 }
                 TranscribeAsyncAction.UpdateAnnotation(
                     actionData = TranscribeAsyncActionData(
                         id = action.id,
                         index = action.index
                     ),
-                    parameters = TranscribeAsyncUpdateAnnotationParameters(
+                    parameters = TranscribeAsyncAnnotationParameters(
                         id = parameters.id
                             ?: error("Missing required field: 'id' in UpdateAnnotation ENTITY Parameters"),
                         startCharacterIndex = parameters.startCharacterIndex
                             ?: error("Missing required field: 'startCharacterIndex' in UpdateAnnotation ENTITY Parameters"),
                         endCharacterIndex = parameters.endCharacterIndex
                             ?: error("Missing required field: 'endCharacterIndex' in UpdateAnnotation ENTITY Parameters"),
-                        type = TranscribeAsyncUpdateAnnotationType.Entity(
+                        type = TranscribeAsyncAnnotationType.Entity(
                             type = type,
                             text = parameters.parameters.text
                                 ?: error("Missing required field: 'text' in UpdateAnnotation ENTITY Parameters")
                         )
                     )
                 )
-            }
-
-            TranscribeAsyncAnnotationParameterTypeResponse.INTENT -> {
-                error("UpdateAnnotation INTENT is not available")
             }
 
             null -> error("Missing required field: 'type' in UpdateAnnotation Parameters")

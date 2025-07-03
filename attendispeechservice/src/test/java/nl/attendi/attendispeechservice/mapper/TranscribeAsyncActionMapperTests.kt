@@ -4,11 +4,9 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.response.TranscribeAsyncResponse
 import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationEntityType
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationIntentStatus
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationType
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncUpdateAnnotationEntityType
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncUpdateAnnotationType
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationType
 import nl.attendi.attendispeechservice.utils.JsonFileReader
 import org.junit.Assert
 import org.junit.Test
@@ -34,7 +32,7 @@ class TranscribeAsyncActionMapperTests {
         Assert.assertEquals("0d42a586-9f65-4bc1-925c-4361ef4a33cc", addAnnotation.actionData.id)
         Assert.assertEquals(0, addAnnotation.actionData.index)
         Assert.assertEquals(
-            TranscribeAsyncAddAnnotationType.TranscriptionTentative,
+            TranscribeAsyncAnnotationType.TranscriptionTentative,
             addAnnotation.parameters.type
         )
         Assert.assertEquals("0e74a828-9f62-448f-842c-45bff04d99a3", addAnnotation.parameters.id)
@@ -53,8 +51,8 @@ class TranscribeAsyncActionMapperTests {
         Assert.assertEquals("07ca2023-cc1a-4f33-a077-9401ba621c15", addAnnotationPending.actionData.id)
         Assert.assertEquals(0, addAnnotationPending.actionData.index)
         val intentPending =
-            addAnnotationPending.parameters.type as TranscribeAsyncAddAnnotationType.Intent
-        Assert.assertEquals(TranscribeAsyncAddAnnotationIntentStatus.PENDING, intentPending.status)
+            addAnnotationPending.parameters.type as TranscribeAsyncAnnotationType.Intent
+        Assert.assertEquals(TranscribeAsyncAnnotationIntentStatus.PENDING, intentPending.status)
         Assert.assertEquals(
             "af262d26-80bd-41d9-97c1-1f9876fa7730",
             addAnnotationPending.parameters.id
@@ -69,9 +67,9 @@ class TranscribeAsyncActionMapperTests {
         )
         Assert.assertEquals(1, addAnnotationRecognized.actionData.index)
         val intentRecognized =
-            addAnnotationRecognized.parameters.type as TranscribeAsyncAddAnnotationType.Intent
+            addAnnotationRecognized.parameters.type as TranscribeAsyncAnnotationType.Intent
         Assert.assertEquals(
-            TranscribeAsyncAddAnnotationIntentStatus.RECOGNIZED,
+            TranscribeAsyncAnnotationIntentStatus.RECOGNIZED,
             intentRecognized.status
         )
         Assert.assertEquals(
@@ -92,8 +90,8 @@ class TranscribeAsyncActionMapperTests {
         val addAnnotation = model[0] as TranscribeAsyncAction.AddAnnotation
         Assert.assertEquals("17ca2023-cc1a-4f33-a077-9401ba621c15", addAnnotation.actionData.id)
         Assert.assertEquals(0, addAnnotation.actionData.index)
-        val entity = addAnnotation.parameters.type as TranscribeAsyncAddAnnotationType.Entity
-        Assert.assertEquals(TranscribeAsyncAddAnnotationEntityType.NAME, entity.type)
+        val entity = addAnnotation.parameters.type as TranscribeAsyncAnnotationType.Entity
+        Assert.assertEquals(TranscribeAsyncAnnotationEntityType.NAME, entity.type)
         Assert.assertEquals("Albert", entity.text)
         Assert.assertEquals("rf262d26-80bd-41d9-97c1-1f9876fa7730", addAnnotation.parameters.id)
         Assert.assertEquals(0, addAnnotation.parameters.startCharacterIndex)
@@ -111,7 +109,7 @@ class TranscribeAsyncActionMapperTests {
         Assert.assertEquals("0d42a586-9f65-4bc1-925c-4361ef4a33cc", updateAnnotation.actionData.id)
         Assert.assertEquals(0, updateAnnotation.actionData.index)
         Assert.assertEquals(
-            TranscribeAsyncUpdateAnnotationType.TranscriptionTentative,
+            TranscribeAsyncAnnotationType.TranscriptionTentative,
             updateAnnotation.parameters.type
         )
         Assert.assertEquals("0e74a828-9f62-448f-842c-45bff04d99a3", updateAnnotation.parameters.id)
@@ -129,8 +127,8 @@ class TranscribeAsyncActionMapperTests {
         val updateAnnotation = model[0] as TranscribeAsyncAction.UpdateAnnotation
         Assert.assertEquals("17ca2023-cc1a-4f33-a077-9401ba621c15", updateAnnotation.actionData.id)
         Assert.assertEquals(0, updateAnnotation.actionData.index)
-        val entity = updateAnnotation.parameters.type as TranscribeAsyncUpdateAnnotationType.Entity
-        Assert.assertEquals(TranscribeAsyncUpdateAnnotationEntityType.NAME, entity.type)
+        val entity = updateAnnotation.parameters.type as TranscribeAsyncAnnotationType.Entity
+        Assert.assertEquals(TranscribeAsyncAnnotationEntityType.NAME, entity.type)
         Assert.assertEquals("Albert", entity.text)
         Assert.assertEquals("rf262d26-80bd-41d9-97c1-1f9876fa7730", updateAnnotation.parameters.id)
         Assert.assertEquals(0, updateAnnotation.parameters.startCharacterIndex)
@@ -188,7 +186,7 @@ class TranscribeAsyncActionMapperTests {
         Assert.assertEquals("3f34eb1a-4d10-4bc3-9c34-b40a7624d57b", addAnnotation.actionData.id)
         Assert.assertEquals(37, addAnnotation.actionData.index)
         Assert.assertEquals(
-            TranscribeAsyncAddAnnotationType.TranscriptionTentative,
+            TranscribeAsyncAnnotationType.TranscriptionTentative,
             addAnnotation.parameters.type
         )
         Assert.assertEquals("e870b00f-c9d0-435c-8997-686bc6c9cb86", addAnnotation.parameters.id)
