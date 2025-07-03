@@ -1,15 +1,15 @@
-package nl.attendi.attendispeechserviceexample.examples.mapper
+package nl.attendi.attendispeechservice.mapper
 
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.response.TranscribeAsyncResponse
-import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAction
-import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAddAnnotationEntityType
-import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAddAnnotationIntentStatus
-import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncAddAnnotationType
-import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncUpdateAnnotationEntityType
-import nl.attendi.attendispeechserviceexample.examples.domain.model.TranscribeAsyncUpdateAnnotationType
-import nl.attendi.attendispeechserviceexample.examples.utils.JsonFileReader
+import nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.response.TranscribeAsyncResponse
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationEntityType
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationIntentStatus
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAddAnnotationType
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncUpdateAnnotationEntityType
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncUpdateAnnotationType
+import nl.attendi.attendispeechservice.utils.JsonFileReader
 import org.junit.Assert
 import org.junit.Test
 
@@ -17,8 +17,9 @@ class TranscribeAsyncActionMapperTests {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun makeResponse(fileName: String) : TranscribeAsyncResponse {
-        val jsonResponse = JsonFileReader.read("data/transcribeasyncservice/dto/response/${fileName}")
+    private fun makeResponse(fileName: String): TranscribeAsyncResponse {
+        val jsonResponse =
+            JsonFileReader.read("data/transcribeasyncservice/dto/response/${fileName}")
         return json.decodeFromString<TranscribeAsyncResponse>(jsonResponse)
     }
 
@@ -32,7 +33,10 @@ class TranscribeAsyncActionMapperTests {
         val addAnnotation = model[0] as TranscribeAsyncAction.AddAnnotation
         Assert.assertEquals("0d42a586-9f65-4bc1-925c-4361ef4a33cc", addAnnotation.action.id)
         Assert.assertEquals(0, addAnnotation.action.index)
-        Assert.assertEquals(TranscribeAsyncAddAnnotationType.TranscriptionTentative, addAnnotation.parameters.type)
+        Assert.assertEquals(
+            TranscribeAsyncAddAnnotationType.TranscriptionTentative,
+            addAnnotation.parameters.type
+        )
         Assert.assertEquals("0e74a828-9f62-448f-842c-45bff04d99a3", addAnnotation.parameters.id)
         Assert.assertEquals(0, addAnnotation.parameters.startCharacterIndex)
         Assert.assertEquals(5, addAnnotation.parameters.endCharacterIndex)
@@ -48,18 +52,32 @@ class TranscribeAsyncActionMapperTests {
         val addAnnotationPending = model[0] as TranscribeAsyncAction.AddAnnotation
         Assert.assertEquals("07ca2023-cc1a-4f33-a077-9401ba621c15", addAnnotationPending.action.id)
         Assert.assertEquals(0, addAnnotationPending.action.index)
-        val intentPending = addAnnotationPending.parameters.type as TranscribeAsyncAddAnnotationType.Intent
+        val intentPending =
+            addAnnotationPending.parameters.type as TranscribeAsyncAddAnnotationType.Intent
         Assert.assertEquals(TranscribeAsyncAddAnnotationIntentStatus.PENDING, intentPending.status)
-        Assert.assertEquals("af262d26-80bd-41d9-97c1-1f9876fa7730", addAnnotationPending.parameters.id)
+        Assert.assertEquals(
+            "af262d26-80bd-41d9-97c1-1f9876fa7730",
+            addAnnotationPending.parameters.id
+        )
         Assert.assertEquals(0, addAnnotationPending.parameters.startCharacterIndex)
         Assert.assertEquals(8, addAnnotationPending.parameters.endCharacterIndex)
 
         val addAnnotationRecognized = model[1] as TranscribeAsyncAction.AddAnnotation
-        Assert.assertEquals("07ca2023-cc1a-4f33-a077-9401ba621c16", addAnnotationRecognized.action.id)
+        Assert.assertEquals(
+            "07ca2023-cc1a-4f33-a077-9401ba621c16",
+            addAnnotationRecognized.action.id
+        )
         Assert.assertEquals(1, addAnnotationRecognized.action.index)
-        val intentRecognized = addAnnotationRecognized.parameters.type as TranscribeAsyncAddAnnotationType.Intent
-        Assert.assertEquals(TranscribeAsyncAddAnnotationIntentStatus.RECOGNIZED, intentRecognized.status)
-        Assert.assertEquals("af262d26-80bd-41d9-97c1-1f9876fa7731", addAnnotationRecognized.parameters.id)
+        val intentRecognized =
+            addAnnotationRecognized.parameters.type as TranscribeAsyncAddAnnotationType.Intent
+        Assert.assertEquals(
+            TranscribeAsyncAddAnnotationIntentStatus.RECOGNIZED,
+            intentRecognized.status
+        )
+        Assert.assertEquals(
+            "af262d26-80bd-41d9-97c1-1f9876fa7731",
+            addAnnotationRecognized.parameters.id
+        )
         Assert.assertEquals(0, addAnnotationRecognized.parameters.startCharacterIndex)
         Assert.assertEquals(8, addAnnotationRecognized.parameters.endCharacterIndex)
     }
@@ -92,7 +110,10 @@ class TranscribeAsyncActionMapperTests {
         val updateAnnotation = model[0] as TranscribeAsyncAction.UpdateAnnotation
         Assert.assertEquals("0d42a586-9f65-4bc1-925c-4361ef4a33cc", updateAnnotation.action.id)
         Assert.assertEquals(0, updateAnnotation.action.index)
-        Assert.assertEquals(TranscribeAsyncUpdateAnnotationType.TranscriptionTentative, updateAnnotation.parameters.type)
+        Assert.assertEquals(
+            TranscribeAsyncUpdateAnnotationType.TranscriptionTentative,
+            updateAnnotation.parameters.type
+        )
         Assert.assertEquals("0e74a828-9f62-448f-842c-45bff04d99a3", updateAnnotation.parameters.id)
         Assert.assertEquals(0, updateAnnotation.parameters.startCharacterIndex)
         Assert.assertEquals(5, updateAnnotation.parameters.endCharacterIndex)
@@ -166,7 +187,10 @@ class TranscribeAsyncActionMapperTests {
         val addAnnotation = model[2] as TranscribeAsyncAction.AddAnnotation
         Assert.assertEquals("3f34eb1a-4d10-4bc3-9c34-b40a7624d57b", addAnnotation.action.id)
         Assert.assertEquals(37, addAnnotation.action.index)
-        Assert.assertEquals(TranscribeAsyncAddAnnotationType.TranscriptionTentative, addAnnotation.parameters.type)
+        Assert.assertEquals(
+            TranscribeAsyncAddAnnotationType.TranscriptionTentative,
+            addAnnotation.parameters.type
+        )
         Assert.assertEquals("e870b00f-c9d0-435c-8997-686bc6c9cb86", addAnnotation.parameters.id)
         Assert.assertEquals(19, addAnnotation.parameters.startCharacterIndex)
         Assert.assertEquals(26, addAnnotation.parameters.endCharacterIndex)

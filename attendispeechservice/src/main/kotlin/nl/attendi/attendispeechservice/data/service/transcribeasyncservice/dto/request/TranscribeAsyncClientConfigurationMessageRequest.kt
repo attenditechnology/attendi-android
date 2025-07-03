@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechserviceexample.examples.data.transcribeasyncservice.dto.request
+package nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.request
 
 import kotlinx.serialization.Serializable
 

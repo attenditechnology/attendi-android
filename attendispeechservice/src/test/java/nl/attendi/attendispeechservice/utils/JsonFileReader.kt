@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechserviceexample.examples.utils
+package nl.attendi.attendispeechservice.utils
 
 import java.nio.charset.StandardCharsets
 

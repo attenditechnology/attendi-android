@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechserviceexample.examples.domain.model
+package nl.attendi.attendispeechservice.domain.model.transcribeasync
 
 /**
  * Represents a sealed hierarchy of asynchronous transcription actions.
