@@ -1,19 +1,24 @@
 package nl.attendi.attendispeechservice.domain.model.transcribestream
 
 import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncReplaceTextMapper
 
 /**
- * Represents the current state and history of a real-time transcription stream.
+ * Represents the current state and history of a real-time transcription stream,
+ * with support for undo and redo operations.
  *
  * This model is updated incrementally as transcription events (i.e., [TranscribeAsyncAction]s)
- * are received over time via WebSocket.
+ * are received over time via WebSocket. It maintains an operation history and supports undoing or
+ * redoing previously applied actions using their inverse representations.
  *
  * @property state The current transcribed text and annotation state.
- * @property operationHistory The chronological list of all transcription actions applied to this stream.
+ * @property operationHistory The chronological list of applied transcription actions, each paired with its inverse.
+ * @property undoneOperations A stack of recently undone actions, enabling redo functionality.
  */
 data class AttendiTranscribeStream(
     val state: AttendiStreamState,
-    val operationHistory: List<TranscribeAsyncAction>
+    val operationHistory: List<UndoableTranscribeAction>,
+    val undoneOperations: List<UndoableTranscribeAction>
 ) {
     /**
      * Updates the stream with a new list of [TranscribeAsyncAction]s.
@@ -25,8 +30,52 @@ data class AttendiTranscribeStream(
      */
     fun receiveActions(actions: List<TranscribeAsyncAction>): AttendiTranscribeStream {
         val newState = state.apply(actions = actions)
-        val newHistory = operationHistory + actions
-        return copy(state = newState, operationHistory = newHistory)
+        val newHistory = operationHistory + UndoableTranscribeAsyncActionMapper.map(state, actions)
+        return copy(
+            state = newState,
+            operationHistory = newHistory,
+            undoneOperations = emptyList() // new user action invalidates redo
+        )
+    }
+
+    /**
+     * Undo the last [count] operations, returning a new [AttendiTranscribeStream].
+     */
+    fun undoOperations(count: Int): AttendiTranscribeStream {
+        require(count >= 0) { "Undo count must be non-negative" }
+        val toUndo = operationHistory.takeLast(count)
+        val remainingHistory = operationHistory.dropLast(count)
+        val inverseActions = toUndo.map { it.inverse.reversed() }.flatten()
+        val reversedActions = inverseActions.reversed()
+        val newState = state.apply(reversedActions)
+
+        return copy(
+            state = newState,
+            operationHistory = remainingHistory,
+            undoneOperations = toUndo + undoneOperations
+        )
+    }
+
+    /**
+     * Redo the last [count] operations, returning a new [AttendiTranscribeStream].
+     */
+    fun redoOperations(count: Int): AttendiTranscribeStream {
+        require(count >= 0) { "Redo count must be non-negative" }
+
+        if (undoneOperations.isEmpty()) return this
+
+        val toRedo = undoneOperations.take(count)
+        val remainingUndone = undoneOperations.drop(count)
+        val redoActions = toRedo.map { it.original }
+
+        val newState = state.apply(redoActions)
+        val newHistory = operationHistory + toRedo
+
+        return copy(
+            state = newState,
+            operationHistory = newHistory,
+            undoneOperations = remainingUndone
+        )
     }
 }
 
@@ -46,10 +95,10 @@ data class AttendiStreamState(
      * Applies a series of [TranscribeAsyncAction]s to this state and returns a new updated state.
      *
      * The following actions are supported:
-     * - [AddAnnotation]: Appends a new annotation.
-     * - [RemoveAnnotation]: Removes annotation(s) by ID.
-     * - [ReplaceText]: Replaces a portion of the text using character indices.
-     * - [UpdateAnnotation]: Updates properties of an existing annotation.
+     * - [TranscribeAsyncAction.AddAnnotation]: Appends a new annotation.
+     * - [TranscribeAsyncAction.RemoveAnnotation]: Removes annotation(s) by ID.
+     * - [TranscribeAsyncAction.ReplaceText]: Replaces a portion of the text using character indices.
+     * - [TranscribeAsyncAction.UpdateAnnotation]: Updates properties of an existing annotation.
      *
      * @param actions The actions to apply in sequence.
      * @return A new [AttendiStreamState] after all actions have been applied.
@@ -66,11 +115,11 @@ data class AttendiStreamState(
                 }
 
                 is TranscribeAsyncAction.RemoveAnnotation -> {
-                    currentAnnotations.removeIf { action.parameters.id == it.actionData.id }
+                    currentAnnotations.removeIf { action.parameters.id == it.parameters.id }
                 }
 
                 is TranscribeAsyncAction.ReplaceText -> {
-                    currentText = replaceText(currentText, action)
+                    currentText = TranscribeAsyncReplaceTextMapper.map(currentText, action)
                 }
 
                 is TranscribeAsyncAction.UpdateAnnotation -> {
@@ -86,7 +135,7 @@ data class AttendiStreamState(
         action: TranscribeAsyncAction.UpdateAnnotation
     ) {
         val index =
-            annotations.indexOfFirst { action.parameters.id == it.actionData.id }
+            annotations.indexOfFirst { action.parameters.id == it.parameters.id }
         if (index != -1) {
             val oldAnnotation = annotations[index]
             val updatedAnnotation = oldAnnotation.copy(
@@ -95,23 +144,5 @@ data class AttendiStreamState(
             )
             annotations[index] = updatedAnnotation
         }
-    }
-
-    /**
-     * Replaces a portion of the text between the given indices with new content.
-     *
-     * @throws IllegalArgumentException if the indices are out of bounds.
-     */
-    private fun replaceText(
-        original: String,
-        action: TranscribeAsyncAction.ReplaceText
-    ): String {
-        val params = action.parameters
-        require(params.startCharacterIndex in 0..original.length) { "startCharacterIndex out of bounds" }
-        require(params.endCharacterIndex in params.startCharacterIndex..original.length) { "endCharacterIndex out of bounds" }
-
-        return original.substring(0, params.startCharacterIndex) +
-                params.text +
-                original.substring(params.endCharacterIndex)
     }
 }

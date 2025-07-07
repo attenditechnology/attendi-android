@@ -10,6 +10,8 @@ import nl.attendi.attendispeechservice.data.decoder.AttendiDefaultMessageDecoder
 import nl.attendi.attendispeechservice.domain.decoder.AttendiMessageDecoder
 import nl.attendi.attendispeechservice.domain.model.transcribestream.AttendiStreamState
 import nl.attendi.attendispeechservice.domain.model.transcribestream.AttendiTranscribeStream
+import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
+import nl.attendi.attendispeechservice.data.connection.websocket.AttendiWebSocketConnection
 
 /**
  * Represents possible errors that can occur during async transcription via [AttendiAsyncTranscribePlugin].
@@ -30,7 +32,6 @@ sealed class AttendiAsyncTranscribePluginError {
      */
     data class Decode(val throwable: Throwable) : AttendiAsyncTranscribePluginError()
 }
-
 
 /**
  * A plugin for real-time, asynchronous speech transcription using [AttendiConnection] and [AttendiMessageDecoder].
@@ -62,7 +63,8 @@ class AttendiAsyncTranscribePlugin(
 
     private var transcribeStream = AttendiTranscribeStream(
         state = AttendiStreamState(text = "", annotations = emptyList()),
-        operationHistory = emptyList()
+        operationHistory = emptyList(),
+        undoneOperations = emptyList()
     )
 
     private var removeAudioFramesListener: (() -> Unit)? = null
@@ -164,7 +166,8 @@ class AttendiAsyncTranscribePlugin(
     private fun clearTranscribeStream() {
         transcribeStream = AttendiTranscribeStream(
             state = AttendiStreamState(text = "", annotations = emptyList()),
-            operationHistory = emptyList()
+            operationHistory = emptyList(),
+            undoneOperations = emptyList()
         )
     }
 
