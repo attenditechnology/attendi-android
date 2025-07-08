@@ -44,20 +44,17 @@ sealed class AttendiAsyncTranscribePluginError {
  * @param connection The connection implementation (e.g., [AttendiWebSocketConnection]) used to send audio and receive messages.
  * @param messageDecoder The decoder used to interpret JSON messages from the backend. Defaults to [AttendiDefaultMessageDecoder].
  * @param onStreamUpdated Callback invoked whenever the transcribe stream is updated with new actions.
- * @param onStreamCompleted Callback invoked when the session ends normally or with an error.
- * @param onError Callback invoked when a connection or decoding error occurs.
+ * @param onStreamCompleted Callback invoked when the session ends normally or with an error [AttendiAsyncTranscribePluginError].
  */
 class AttendiAsyncTranscribePlugin(
     private val connection: AttendiConnection,
     private val messageDecoder: AttendiMessageDecoder = AttendiDefaultMessageDecoder,
+    private val onStreamStarted: () -> Unit = { },
     private val onStreamUpdated: (AttendiTranscribeStream) -> Unit,
-    private val onStreamCompleted: (AttendiTranscribeStream, withError: Boolean) -> Unit = { _, _ -> },
-    private val onError: (AttendiAsyncTranscribePluginError, AttendiTranscribeStream) -> Unit = { _, _ -> }
+    private val onStreamCompleted: (AttendiTranscribeStream, error: AttendiAsyncTranscribePluginError?) -> Unit = { _, _ -> }
 ) : AttendiMicrophonePlugin {
 
-    private var streamingBuffer = mutableListOf<Short>()
-
-    companion object {
+    private companion object {
         const val N_SAMPLES_PER_MESSAGE = 4224 // around 264 ms of audio at 16 kHz
     }
 
@@ -67,11 +64,11 @@ class AttendiAsyncTranscribePlugin(
         undoneOperations = emptyList()
     )
 
+    private var streamingBuffer = mutableListOf<Short>()
     private var removeAudioFramesListener: (() -> Unit)? = null
     private var removeStopRecordingListener: (() -> Unit)? = null
-    private var streamFinishedWithError = false
     private var isClosingConnection = false
-
+    private var pluginError: AttendiAsyncTranscribePluginError? = null
     private var audioJob: Job? = null
 
     /**
@@ -89,7 +86,8 @@ class AttendiAsyncTranscribePlugin(
                 override fun onOpen() {
                     clearTranscribeStream()
                     isClosingConnection = false
-                    streamFinishedWithError = false
+                    pluginError = null
+                    onStreamStarted()
                 }
 
                 override fun onMessage(message: String) {
@@ -98,33 +96,19 @@ class AttendiAsyncTranscribePlugin(
                         transcribeStream = transcribeStream.receiveActions(transcribeActions)
                         onStreamUpdated(transcribeStream)
                     } catch (e: Exception) {
-                        streamFinishedWithError = true
-                        onError(AttendiAsyncTranscribePluginError.Decode(e), transcribeStream)
-                        state.coroutineScope.launch {
-                            state.stop(delayMilliseconds = 0)
-                            for (errorCallback in state.errorCallbacks) {
-                                errorCallback(Exception("Async Transcribe Decode error"))
-                            }
-                        }
+                        pluginError = AttendiAsyncTranscribePluginError.Decode(e)
+                        forceStopMicrophone(state, "Async Transcribe Decode error")
                         closeConnection()
                     }
                 }
 
                 override fun onError(error: AttendiConnectionError) {
-                    onError(AttendiAsyncTranscribePluginError.Connection(error), transcribeStream)
-
-                    state.coroutineScope.launch {
-                        state.stop(delayMilliseconds = 0)
-                        for (errorCallback in state.errorCallbacks) {
-                            errorCallback(Exception("Async Transcribe Connection error"))
-                        }
-                    }
-
-                    onStreamCompleted(transcribeStream, true)
+                    forceStopMicrophone(state, "Async Transcribe Connection error")
+                    onStreamCompleted(transcribeStream, AttendiAsyncTranscribePluginError.Connection(error))
                 }
 
                 override fun onClose() {
-                    onStreamCompleted(transcribeStream, streamFinishedWithError)
+                    onStreamCompleted(transcribeStream, pluginError)
                 }
             })
 
@@ -137,6 +121,15 @@ class AttendiAsyncTranscribePlugin(
                     sendRemainingRecording()
                     closeConnection()
                 }
+            }
+        }
+    }
+
+    private fun forceStopMicrophone(state: AttendiMicrophoneState, message: String) {
+        state.coroutineScope.launch {
+            state.stop(delayMilliseconds = 0)
+            for (errorCallback in state.errorCallbacks.toList()) {
+                errorCallback(Exception(message))
             }
         }
     }

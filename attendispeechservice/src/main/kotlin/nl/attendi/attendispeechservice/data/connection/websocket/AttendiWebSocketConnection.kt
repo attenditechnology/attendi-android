@@ -42,7 +42,7 @@ class AttendiWebSocketConnection(
     private val apiConfig: TranscribeAPIConfig
 ) : AttendiConnection {
 
-    companion object {
+    private companion object {
         /** Maximum duration to wait when establishing a connection. */
         const val CONNECTION_TIMEOUT_MILLIS = 20_000L
 

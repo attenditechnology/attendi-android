@@ -2,6 +2,7 @@ package nl.attendi.attendispeechserviceexample.examples.connection.custom
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -13,10 +14,12 @@ object CustomConnection : AttendiConnection {
     private var listener: AttendiConnectionListener? = null
 
     private var isConnected = false
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private var job = SupervisorJob()
+    private var scope = CoroutineScope(Dispatchers.IO + job)
 
     override fun connect(listener: AttendiConnectionListener) {
         this.listener = listener
+        resetScope()
 
         listener.onOpen()
         isConnected = true
@@ -33,8 +36,14 @@ object CustomConnection : AttendiConnection {
         }
     }
 
-    override fun disconnect() {
+    private fun resetScope() {
         scope.cancel()
+        job = SupervisorJob()
+        scope = CoroutineScope(Dispatchers.IO + job)
+    }
+
+    override fun disconnect() {
+        resetScope()
         isConnected = false
     }
 

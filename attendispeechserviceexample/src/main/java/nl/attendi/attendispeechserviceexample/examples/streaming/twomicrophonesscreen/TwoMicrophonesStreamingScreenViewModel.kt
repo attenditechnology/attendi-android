@@ -5,15 +5,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import nl.attendi.attendispeechservice.domain.model.transcribestream.AttendiStreamState
 
 class TwoMicrophonesStreamingScreenViewModel: ViewModel() {
 
     private class DataStore {
-        var shortTextFieldText: String = ""
-        var currentShortTextFieldStreamText: String = ""
+        var shortTextFieldData = TextFieldData()
+        var longTextFieldData = TextFieldData()
 
-        var longTextFieldText: String = ""
-        var currentLongTextFieldStreamText: String = ""
+        data class TextFieldData(
+            var text: String = "",
+            var currentStreamText: String = "",
+            var textCursor: Int = 0
+        )
     }
 
     val model: StateFlow<TwoMicrophonesStreamingScreenModel> by lazy {
@@ -24,7 +28,7 @@ class TwoMicrophonesStreamingScreenViewModel: ViewModel() {
         MutableStateFlow(
             TwoMicrophonesStreamingScreenModel(
                 shortTextFieldModel = mapShortTextFieldModel(),
-                longTextFieldModel = mapLongTextFieldModel(),
+                longTextFieldModel = mapLongTextFieldModel()
             )
         )
     }
@@ -32,73 +36,74 @@ class TwoMicrophonesStreamingScreenViewModel: ViewModel() {
     private var dataStore = DataStore()
 
     private fun mapShortTextFieldModel() : TwoMicrophonesStreamingScreenModel.TextFieldModel {
-        fun updateTextFieldOnStreamTextChange(text: String) {
-            dataStore.currentShortTextFieldStreamText = text
-            _model.update { currentState ->
-                currentState.copy(
-                    shortTextFieldModel = currentState.shortTextFieldModel.copy(
-                        text = dataStore.shortTextFieldText + dataStore.currentShortTextFieldStreamText
-                    )
-                )
-            }
-        }
-
-        return TwoMicrophonesStreamingScreenModel.TextFieldModel(
-            text = "",
-            onTextChange = { text ->
-                dataStore.shortTextFieldText = text
-                _model.update { currentState ->
-                    currentState.copy(
-                        shortTextFieldModel = currentState.shortTextFieldModel.copy(
-                            text = text
-                        )
-                    )
-                }
-            },
-            onStreamTextChange = { text ->
-                updateTextFieldOnStreamTextChange(text)
-            },
-            onStreamTextFinished = { text ->
-                updateTextFieldOnStreamTextChange(text)
-                val currentlyDisplayedText = _model.value.shortTextFieldModel.text
-                dataStore.shortTextFieldText = if (currentlyDisplayedText.isEmpty()) "" else "$currentlyDisplayedText "
-                dataStore.currentShortTextFieldStreamText = ""
-            }
+        return mapTextFieldModel(
+            getModel = { it.shortTextFieldModel },
+            updateModel = { model, updated -> model.copy(shortTextFieldModel = updated) },
+            data = dataStore.shortTextFieldData,
+            delimiterAfterStream = " "
         )
     }
 
     private fun mapLongTextFieldModel() : TwoMicrophonesStreamingScreenModel.TextFieldModel {
-        fun updateTextFieldOnStreamTextChange(text: String) {
-            dataStore.currentLongTextFieldStreamText = text
+        return mapTextFieldModel(
+            getModel = { it.longTextFieldModel },
+            updateModel = { model, updated -> model.copy(longTextFieldModel = updated) },
+            data = dataStore.longTextFieldData,
+            delimiterAfterStream = "\n"
+        )
+    }
+
+    private fun mapTextFieldModel(
+        getModel: (TwoMicrophonesStreamingScreenModel) -> TwoMicrophonesStreamingScreenModel.TextFieldModel,
+        updateModel: (TwoMicrophonesStreamingScreenModel, TwoMicrophonesStreamingScreenModel.TextFieldModel) -> TwoMicrophonesStreamingScreenModel,
+        data: DataStore.TextFieldData,
+        delimiterAfterStream: String
+    ): TwoMicrophonesStreamingScreenModel.TextFieldModel {
+
+        fun updateTextFieldOnStreamStateUpdate(streamState: AttendiStreamState) {
+            data.currentStreamText = streamState.text
             _model.update { currentState ->
-                currentState.copy(
-                    longTextFieldModel = currentState.longTextFieldModel.copy(
-                        text = dataStore.longTextFieldText + dataStore.currentLongTextFieldStreamText
-                    )
-                )
+                updateModel(currentState, getModel(currentState).copy(
+                    text = data.text + data.currentStreamText,
+                    annotations = streamState.annotations
+                ))
+            }
+        }
+
+        fun updateTextFieldCursorPosition() {
+            _model.update { currentState ->
+                updateModel(currentState, getModel(currentState).copy(
+                    startStreamCharacterOffset = data.textCursor
+                ))
             }
         }
 
         return TwoMicrophonesStreamingScreenModel.TextFieldModel(
             text = "",
+            annotations = emptyList(),
+            startStreamCharacterOffset = 0,
             onTextChange = { text ->
-                dataStore.longTextFieldText = text
+                data.text = text
                 _model.update { currentState ->
-                    currentState.copy(
-                        longTextFieldModel = currentState.longTextFieldModel.copy(
-                            text = text
-                        )
-                    )
+                    updateModel(currentState, getModel(currentState).copy(text = text))
                 }
             },
-            onStreamTextChange = { text ->
-                updateTextFieldOnStreamTextChange(text)
+            onStreamStarted = {
+                val currentlyDisplayedText = getModel(_model.value).text
+                data.text = when {
+                    currentlyDisplayedText.isEmpty() -> ""
+                    currentlyDisplayedText.last().toString() == delimiterAfterStream -> currentlyDisplayedText
+                    else -> "$currentlyDisplayedText$delimiterAfterStream"
+                }
+                data.textCursor = data.text.length
+                updateTextFieldCursorPosition()
             },
-            onStreamTextFinished = { text ->
-                updateTextFieldOnStreamTextChange(text)
-                val currentlyDisplayedText = _model.value.longTextFieldModel.text
-                dataStore.longTextFieldText = if (currentlyDisplayedText.isEmpty()) "" else "$currentlyDisplayedText\n"
-                dataStore.currentLongTextFieldStreamText = ""
+            onStreamUpdated = { stream ->
+                updateTextFieldOnStreamStateUpdate(stream.state)
+            },
+            onStreamFinished = { stream ->
+                updateTextFieldOnStreamStateUpdate(stream.state)
+                data.currentStreamText = ""
             }
         )
     }

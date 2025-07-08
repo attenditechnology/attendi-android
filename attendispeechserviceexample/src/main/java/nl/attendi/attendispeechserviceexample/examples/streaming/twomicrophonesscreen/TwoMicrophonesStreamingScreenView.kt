@@ -31,14 +31,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
-import nl.attendi.attendispeechserviceexample.exampleAPIConfig
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiAsyncTranscribePlugin
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
+import nl.attendi.attendispeechservice.data.connection.websocket.AttendiWebSocketConnection
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechserviceexample.exampleAPIConfig
 import nl.attendi.attendispeechserviceexample.examples.connection.custom.CustomConnection
 import nl.attendi.attendispeechserviceexample.examples.connection.custom.CustomMessageDecoder
-import nl.attendi.attendispeechservice.data.connection.websocket.AttendiWebSocketConnection
 import nl.attendi.attendispeechserviceexample.examples.plugins.StopTranscriptionOnPausePlugin
 
 /**
@@ -64,14 +71,22 @@ fun TwoMicrophonesScreenStreamingView(
         ) {
             TextField(
                 value = model.shortTextFieldModel.text,
-                onValueChange = { model.shortTextFieldModel.onTextChange(it) },
+                onValueChange = {
+                    model.shortTextFieldModel.onTextChange(it)
+                },
+                visualTransformation = mapAnnotatedTextTransformation(
+                    annotations = model.shortTextFieldModel.annotations,
+                    startStreamCharacterOffset = model.shortTextFieldModel.startStreamCharacterOffset
+                ),
                 singleLine = true,
                 maxLines = 1,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(0.dp)
-                    .onFocusChanged { model.shortTextFieldModel.onFocusChange?.invoke(it.isFocused) },
+                    .onFocusChanged {
+                        model.shortTextFieldModel.onFocusChange?.invoke(it.isFocused)
+                    },
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -89,11 +104,14 @@ fun TwoMicrophonesScreenStreamingView(
                     AttendiAsyncTranscribePlugin(
                         connection = CustomConnection,
                         messageDecoder = CustomMessageDecoder,
+                        onStreamStarted = {
+                            model.shortTextFieldModel.onStreamStarted()
+                        },
                         onStreamUpdated = { stream ->
-                            model.shortTextFieldModel.onStreamTextChange(stream.state.text)
+                            model.shortTextFieldModel.onStreamUpdated(stream)
                         },
                         onStreamCompleted = { stream, _ ->
-                            model.shortTextFieldModel.onStreamTextFinished(stream.state.text)
+                            model.shortTextFieldModel.onStreamFinished(stream)
                         }
                     )
                 )
@@ -107,7 +125,13 @@ fun TwoMicrophonesScreenStreamingView(
         ) {
             TextField(
                 value = model.longTextFieldModel.text,
-                onValueChange = { model.longTextFieldModel.onTextChange(it) },
+                onValueChange = {
+                    model.longTextFieldModel.onTextChange(it)
+                },
+                visualTransformation = mapAnnotatedTextTransformation(
+                    annotations = model.longTextFieldModel.annotations,
+                    startStreamCharacterOffset = model.longTextFieldModel.startStreamCharacterOffset
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
@@ -129,16 +153,57 @@ fun TwoMicrophonesScreenStreamingView(
                         connection = AttendiWebSocketConnection(
                             apiConfig = exampleAPIConfig
                         ),
+                        onStreamStarted = {
+                            model.longTextFieldModel.onStreamStarted()
+                        },
                         onStreamUpdated = { stream ->
-                            model.longTextFieldModel.onStreamTextChange(stream.state.text)
+                            model.longTextFieldModel.onStreamUpdated(stream)
                         },
                         onStreamCompleted = { stream, _ ->
-                            model.longTextFieldModel.onStreamTextFinished(stream.state.text)
+                            model.longTextFieldModel.onStreamFinished(stream)
                         }
                     )
                 ),
                 modifier = Modifier.testTag("TwoMicrophonesScreenStreamingLargeTextMicrophone")
             )
         }
+    }
+}
+
+private fun mapAnnotatedTextTransformation(
+    annotations: List<TranscribeAsyncAction.AddAnnotation>,
+    startStreamCharacterOffset: Int
+): VisualTransformation {
+    return VisualTransformation { originalText ->
+        val builder = AnnotatedString.Builder(originalText.text)
+
+        annotations.forEach { annotation ->
+            val color = when (annotation.parameters.type) {
+                is TranscribeAsyncAnnotationType.TranscriptionTentative -> Color.Cyan
+                is TranscribeAsyncAnnotationType.Intent -> Color.Blue
+                is TranscribeAsyncAnnotationType.Entity -> Color.Green
+            }
+
+            val start =
+                (annotation.parameters.startCharacterIndex + startStreamCharacterOffset).coerceIn(
+                    0,
+                    builder.length
+                )
+            val end =
+                (annotation.parameters.endCharacterIndex + startStreamCharacterOffset).coerceIn(
+                    start,
+                    builder.length
+                )
+
+            if (start in 0 until end) {
+                builder.addStyle(
+                    style = SpanStyle(color = color),
+                    start = start,
+                    end = end
+                )
+            }
+        }
+
+        TransformedText(builder.toAnnotatedString(), OffsetMapping.Identity)
     }
 }
