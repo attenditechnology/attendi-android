@@ -8,9 +8,7 @@ import nl.attendi.attendispeechservice.domain.connection.AttendiConnectionListen
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
 import nl.attendi.attendispeechservice.data.decoder.AttendiDefaultMessageDecoder
 import nl.attendi.attendispeechservice.domain.decoder.AttendiMessageDecoder
-import nl.attendi.attendispeechservice.domain.model.transcribestream.AttendiStreamState
 import nl.attendi.attendispeechservice.domain.model.transcribestream.AttendiTranscribeStream
-import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
 import nl.attendi.attendispeechservice.data.connection.websocket.AttendiWebSocketConnection
 
 /**
@@ -35,11 +33,21 @@ sealed class AttendiAsyncTranscribePluginError {
 
 /**
  * A plugin for real-time, asynchronous speech transcription using [AttendiConnection] and [AttendiMessageDecoder].
+ * It is designed around the Strategy Design Pattern to promote extensibility and customizability.
+ * Two key components — AttendiConnection and AttendiMessageDecoder — are injected via constructor parameters,
+ * allowing users to swap or extend behavior without modifying the core plugin.
  *
- * This plugin connects to a WebSocket transcription service, listens to audio frames from the microphone,
- * sends them in chunks, and updates the transcription stream based on incoming messages.
+ * By using interfaces (AttendiConnection, AttendiMessageDecoder), we decouple the plugin logic from specific implementations:
+ * AttendiConnection: Defines how audio is sent and responses are received.
+ * AttendiMessageDecoder: Defines how incoming messages are interpreted into List<TranscribeAsyncAction> models.
  *
- * Can be registered into an [AttendiMicrophone] pipeline using the [AttendiMicrophonePlugin] interface.
+ * For typical use cases with the Attendi WebSocket service, the plugin provides:
+ * AttendiWebSocketConnection: A default WebSocket-based connection that handles sending/receiving messages to Attendi’s servers.
+ * AttendiDefaultMessageDecoder: A decoder that interprets Attendi-formatted JSON messages into actionable TranscribeAsyncAction objects.
+ * These cover most use cases out of the box.
+ *
+ * If you want to integrate Attendi’s plugin with your own transcription server, or use a different message format,
+ * you can do so by providing custom implementations of the AttendiConnection and AttendiMessageDecoder interfaces.
  *
  * @param connection The connection implementation (e.g., [AttendiWebSocketConnection]) used to send audio and receive messages.
  * @param messageDecoder The decoder used to interpret JSON messages from the backend. Defaults to [AttendiDefaultMessageDecoder].
@@ -49,6 +57,7 @@ sealed class AttendiAsyncTranscribePluginError {
 class AttendiAsyncTranscribePlugin(
     private val connection: AttendiConnection,
     private val messageDecoder: AttendiMessageDecoder = AttendiDefaultMessageDecoder,
+    private val onStreamConnecting: () -> Unit = { },
     private val onStreamStarted: () -> Unit = { },
     private val onStreamUpdated: (AttendiTranscribeStream) -> Unit,
     private val onStreamCompleted: (AttendiTranscribeStream, error: AttendiAsyncTranscribePluginError?) -> Unit = { _, _ -> }
@@ -58,15 +67,11 @@ class AttendiAsyncTranscribePlugin(
         const val N_SAMPLES_PER_MESSAGE = 4224 // around 264 ms of audio at 16 kHz
     }
 
-    private var transcribeStream = AttendiTranscribeStream(
-        state = AttendiStreamState(text = "", annotations = emptyList()),
-        operationHistory = emptyList(),
-        undoneOperations = emptyList()
-    )
-
+    private var transcribeStream = AttendiTranscribeStream()
     private var streamingBuffer = mutableListOf<Short>()
     private var removeAudioFramesListener: (() -> Unit)? = null
     private var removeStopRecordingListener: (() -> Unit)? = null
+    private var isConnectionOpen = false
     private var isClosingConnection = false
     private var pluginError: AttendiAsyncTranscribePluginError? = null
     private var audioJob: Job? = null
@@ -81,48 +86,64 @@ class AttendiAsyncTranscribePlugin(
      */
     override fun activate(state: AttendiMicrophoneState) {
         state.onBeforeStartRecording {
-            connection.connect(listener = object : AttendiConnectionListener {
+            resetPluginState()
+            onStreamConnecting()
+            try {
+                connection.connect(listener = object : AttendiConnectionListener {
+                    override fun onOpen() {
+                        isConnectionOpen = true
+                        onStreamStarted()
+                    }
 
-                override fun onOpen() {
-                    clearTranscribeStream()
-                    isClosingConnection = false
-                    pluginError = null
-                    onStreamStarted()
-                }
+                    override fun onMessage(message: String) {
+                        try {
+                            val transcribeActions = messageDecoder.decode(message)
+                            transcribeStream = transcribeStream.receiveActions(transcribeActions)
+                            onStreamUpdated(transcribeStream)
+                        } catch (e: Exception) {
+                            pluginError = AttendiAsyncTranscribePluginError.Decode(e)
+                            forceStopMicrophone(state, "Async Transcribe Decode error")
+                            state.coroutineScope.launch {
+                                closeConnection()
+                            }
+                        }
+                    }
 
-                override fun onMessage(message: String) {
-                    try {
-                        val transcribeActions = messageDecoder.decode(message)
-                        transcribeStream = transcribeStream.receiveActions(transcribeActions)
-                        onStreamUpdated(transcribeStream)
-                    } catch (e: Exception) {
-                        pluginError = AttendiAsyncTranscribePluginError.Decode(e)
-                        forceStopMicrophone(state, "Async Transcribe Decode error")
+                    override fun onError(error: AttendiConnectionError) {
+                        forceStopMicrophone(state, "Async Transcribe Connection error")
+                        onStreamCompleted(transcribeStream, AttendiAsyncTranscribePluginError.Connection(error))
+                    }
+
+                    override fun onClose() {
+                        isConnectionOpen = false
+                        onStreamCompleted(transcribeStream, pluginError)
+                    }
+                })
+
+                audioJob = state.coroutineScope.launch {
+                    removeAudioFramesListener = state.onAudioFrames { audioFrames ->
+                        processAudioFrames(audioFrames)
+                    }
+
+                    removeStopRecordingListener = state.onStopRecording {
+                        sendRemainingAudio()
                         closeConnection()
                     }
                 }
-
-                override fun onError(error: AttendiConnectionError) {
-                    forceStopMicrophone(state, "Async Transcribe Connection error")
-                    onStreamCompleted(transcribeStream, AttendiAsyncTranscribePluginError.Connection(error))
-                }
-
-                override fun onClose() {
-                    onStreamCompleted(transcribeStream, pluginError)
-                }
-            })
-
-            audioJob = state.coroutineScope.launch {
-                removeAudioFramesListener = state.onAudioFrames { audioFrames ->
-                    processAudioFrames(audioFrames)
-                }
-
-                removeStopRecordingListener = state.onStopRecording {
-                    sendRemainingRecording()
-                    closeConnection()
-                }
+            } catch (e: Exception) {
+                pluginError =
+                    AttendiAsyncTranscribePluginError.Connection(AttendiConnectionError.Unknown("Connection Failed"))
+                forceStopMicrophone(state, "Connection failed: ${e.message}")
+                onStreamCompleted(transcribeStream, pluginError)
             }
         }
+    }
+
+    private fun resetPluginState() {
+        transcribeStream = AttendiTranscribeStream()
+        isConnectionOpen = false
+        isClosingConnection = false
+        pluginError = null
     }
 
     private fun forceStopMicrophone(state: AttendiMicrophoneState, message: String) {
@@ -134,15 +155,14 @@ class AttendiAsyncTranscribePlugin(
         }
     }
 
-    private suspend fun sendRemainingRecording() {
-        if (connection.isConnected()) {
-            connection.send(streamingBuffer.toShortArray())
-        }
+    private suspend fun sendRemainingAudio() {
+        connection.send(streamingBuffer.toShortArray())
     }
 
-    private fun closeConnection() {
+    private suspend fun closeConnection() {
         if (isClosingConnection) { return }
         isClosingConnection = true
+        pluginError = null
 
         audioJob?.cancel()
 
@@ -156,19 +176,13 @@ class AttendiAsyncTranscribePlugin(
         streamingBuffer.clear()
     }
 
-    private fun clearTranscribeStream() {
-        transcribeStream = AttendiTranscribeStream(
-            state = AttendiStreamState(text = "", annotations = emptyList()),
-            operationHistory = emptyList(),
-            undoneOperations = emptyList()
-        )
-    }
-
     /**
      * Deactivates the plugin, closes the WebSocket connection, and clears any pending audio buffers or listeners.
      */
     override fun deactivate(state: AttendiMicrophoneState) {
-        closeConnection()
+        state.coroutineScope.launch {
+            closeConnection()
+        }
     }
 
     // Helper extension to convert List<Short> to ByteArray for sending
@@ -183,7 +197,7 @@ class AttendiAsyncTranscribePlugin(
 
     private suspend fun processAudioFrames(audioFrames: List<Short>) {
         // Wait for the socket connection to be open prior on adding frames to the buffer
-        if (!connection.isConnected()) {
+        if (!isConnectionOpen) {
             return
         }
 
@@ -193,7 +207,8 @@ class AttendiAsyncTranscribePlugin(
         if (streamingBuffer.size < N_SAMPLES_PER_MESSAGE) return
 
         // Get the first N_SAMPLES_PER_MESSAGE frames and remove them from the buffer
-        val frames = streamingBuffer.subList(0, N_SAMPLES_PER_MESSAGE).toMutableList()
+        val frames = streamingBuffer.subList(0, N_SAMPLES_PER_MESSAGE
+        ).toMutableList()
         if (connection.send(frames.toShortArray())) {
             streamingBuffer = streamingBuffer.drop(N_SAMPLES_PER_MESSAGE).toMutableList()
         }

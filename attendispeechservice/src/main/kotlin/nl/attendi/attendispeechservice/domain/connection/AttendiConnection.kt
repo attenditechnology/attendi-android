@@ -13,17 +13,12 @@ interface AttendiConnection {
      *
      * @param listener An implementation of [AttendiConnectionListener] to handle callbacks.
      */
-    fun connect(listener: AttendiConnectionListener)
+    suspend fun connect(listener: AttendiConnectionListener)
 
     /**
      * Closes the connection if it is currently active.
      */
-    fun disconnect()
-
-    /**
-     * Returns whether the connection is currently open and available for communication.
-     */
-    fun isConnected(): Boolean
+    suspend fun disconnect()
 
     /**
      * Sends a textual message over the connection.

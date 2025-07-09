@@ -2,12 +2,14 @@ package nl.attendi.attendispeechservice.data.connection.websocket
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import nl.attendi.attendispeechservice.data.client.AttendiClient
@@ -38,36 +40,38 @@ import kotlin.coroutines.resumeWithException
  * @param apiConfig Configuration options for accessing the Attendi API.
  */
 class AttendiWebSocketConnection(
-    private val accessToken: String? = null,
-    private val apiConfig: TranscribeAPIConfig
+    private val apiConfig: TranscribeAPIConfig,
+    private val accessToken: String? = null
 ) : AttendiConnection {
 
     private companion object {
         /** Maximum duration to wait when establishing a connection. */
-        const val CONNECTION_TIMEOUT_MILLIS = 20_000L
+        const val CONNECTION_TIMEOUT_MILLISECONDS = 20_000L
 
         /** Timeout to wait for the server to close the connection after sending the end-of-stream message. */
-        const val SERVER_CLOSE_SOCKET_TIMEOUT_MILLIS = 5_000L
+        const val SERVER_CLOSE_SOCKET_TIMEOUT_MILLISECONDS = 5_000L
 
         /** Polling interval for checking if the server closed the socket. */
-        const val SERVER_CLOSE_SOCKET_INTERVAL_CHECK_MILLIS = 50L
+        const val SERVER_CLOSE_SOCKET_INTERVAL_CHECK_MILLISECONDS = 50L
 
         /** WebSocket closure code indicating a normal, expected shutdown. */
         const val WEBSOCKET_NORMAL_CLOSURE_CODE = 1000
 
         /** WebSocket closure code indicating a timeout, forced shutdown. */
-        const val WEBSOCKET_TIMEOUT_CLOSURE_CODE = 1001
+        const val WEBSOCKET_TIMEOUT_CLOSURE_CODE = 4000
     }
 
-    @Volatile private var socket: WebSocket? = null
-    @Volatile private var isSocketConnected = false
+    /**
+     * A mutex to ensure that only one connect() operation can run at a time.
+     * This prevents race conditions or concurrent connection attempts,
+     * especially if connect() is called repeatedly or from multiple coroutines.
+     */
+    private val connectMutex = Mutex()
+    private var currentConnectJob: Job? = null
+    private var socket: WebSocket? = null
     private var listener: AttendiConnectionListener? = null
-
     private val client = AttendiClient(apiConfig)
     private val okHttpClient = OkHttpClient()
-
-    private var socketJob = SupervisorJob()
-    private var socketScope = CoroutineScope(Dispatchers.IO + socketJob)
 
     /**
      * Initiates a WebSocket connection to the Attendi streaming API.
@@ -77,52 +81,56 @@ class AttendiWebSocketConnection(
      *
      * @param listener An implementation of [AttendiConnectionListener] to observe connection state.
      */
-    override fun connect(listener: AttendiConnectionListener) {
-        this.listener = listener
-        resetScope()
+    override suspend fun connect(listener: AttendiConnectionListener) {
+        connectMutex.withLock {
+            /**
+             * The `cancelAndJoin()` call ensures that any previous connection attempt
+             * is properly cancelled and cleaned up before starting a new one.
+             * This prevents overlapping socket jobs, which could lead to undefined behavior,
+             * such as multiple listeners or conflicting connection states.
+             */
+            currentConnectJob?.cancelAndJoin()
 
-        socketScope.launch {
-            val token: String = accessToken
-                ?: try {
-                    client.authenticate(apiConfig)
-                } catch (e: Exception) {
-                    listener.onError(AttendiConnectionError.FailedToConnect(message = e.message))
+            currentConnectJob = CoroutineScope(Dispatchers.IO).launch {
+                this@AttendiWebSocketConnection.listener = listener
+
+                val token: String = accessToken
+                    ?: try {
+                        client.authenticate(apiConfig)
+                    } catch (e: Exception) {
+                        listener.onError(AttendiConnectionError.FailedToConnect(message = e.message))
+                        return@launch
+                    }
+
+                val socketUrl = makeSocketUrl()
+                if (socketUrl == null) {
+                    listener.onError(AttendiConnectionError.FailedToConnect(message = "No API URL provided"))
                     return@launch
                 }
 
-            val socketUrl = makeSocketUrl()
-            if (socketUrl == null) {
-                listener.onError(AttendiConnectionError.FailedToConnect(message = "No API URL provided"))
-                return@launch
-            }
+                val request = Request.Builder()
+                    .url(socketUrl)
+                    .addHeader("Authorization", "Bearer $token")
+                    .build()
 
-            val request = Request.Builder()
-                .url(socketUrl)
-                .addHeader("Authorization", "Bearer $token")
-                .build()
-
-            try {
-                connectSocket(request)
-            } catch (e: TimeoutCancellationException) {
-                listener.onError(AttendiConnectionError.ConnectTimeout)
-            } catch (e: Exception) {
-                listener.onError(AttendiConnectionError.Unknown(e.message, e))
+                try {
+                    connectSocket(request)
+                } catch (e: TimeoutCancellationException) {
+                    listener.onError(AttendiConnectionError.ConnectTimeout)
+                } catch (e: Exception) {
+                    listener.onError(AttendiConnectionError.Unknown(e.message, e))
+                }
             }
         }
-    }
-
-    private fun resetScope() {
-        socketJob.cancel()
-        socketJob = SupervisorJob()
-        socketScope = CoroutineScope(Dispatchers.IO + socketJob)
+        // Wait for the connect job to complete before returning
+        currentConnectJob?.join()
     }
 
     private suspend fun connectSocket(request: Request) {
-        withTimeout(CONNECTION_TIMEOUT_MILLIS) {
+        withTimeout(CONNECTION_TIMEOUT_MILLISECONDS) {
             suspendCancellableCoroutine { continuation ->
                 socket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
-                        isSocketConnected = true
                         val configMessage = AttendiWebSocketConnectionFactory.makeConfigMessage()
                         webSocket.send(configMessage)
                         listener?.onOpen()
@@ -137,7 +145,6 @@ class AttendiWebSocketConnection(
                         handleSocketClosed()
                         if (code == WEBSOCKET_NORMAL_CLOSURE_CODE) {
                             listener?.onClose()
-                            socketScope.cancel()
                         } else {
                             listener?.onError(AttendiConnectionError.ClosedAbnormally(reason))
                         }
@@ -162,7 +169,7 @@ class AttendiWebSocketConnection(
         }
     }
 
-    private fun makeSocketUrl() : String? {
+    private fun makeSocketUrl(): String? {
         val socketBaseUrl = client.getApiURL()?.replace("http", "ws")
         return socketBaseUrl?.let {
             "$it/v1/speech/transcribe/stream"
@@ -171,7 +178,8 @@ class AttendiWebSocketConnection(
 
     private fun handleSocketClosed() {
         socket = null
-        isSocketConnected = false
+        currentConnectJob?.cancel()
+        currentConnectJob = null
     }
 
     /**
@@ -181,15 +189,12 @@ class AttendiWebSocketConnection(
      * for the server to close the socket. If the server doesn't respond in time,
      * the connection is forcibly terminated.
      */
-    override fun disconnect() {
+    override suspend fun disconnect() {
         sendCloseMessageToServer()
+        val socketClosedByServer = waitForServerToCloseSocket()
 
-        socketScope.launch {
-            val socketClosedByServer = waitForServerToCloseSocket()
-
-            if (!socketClosedByServer) {
-                forceCloseSocket()
-            }
+        if (!socketClosedByServer) {
+            forceCloseSocket()
         }
     }
 
@@ -199,24 +204,22 @@ class AttendiWebSocketConnection(
     }
 
     private suspend fun waitForServerToCloseSocket(): Boolean {
-        return withTimeoutOrNull(SERVER_CLOSE_SOCKET_TIMEOUT_MILLIS) {
+        return withTimeoutOrNull(SERVER_CLOSE_SOCKET_TIMEOUT_MILLISECONDS) {
             while (socket != null) {
-                delay(SERVER_CLOSE_SOCKET_INTERVAL_CHECK_MILLIS)
+                delay(SERVER_CLOSE_SOCKET_INTERVAL_CHECK_MILLISECONDS)
             }
             true // Socket was closed by server within timeout
         } ?: false // Timeout reached
     }
 
     private fun forceCloseSocket() {
-        socket?.close(WEBSOCKET_TIMEOUT_CLOSURE_CODE, "Timeout reached after end of audio stream message sent")
+        socket?.close(
+            WEBSOCKET_TIMEOUT_CLOSURE_CODE,
+            "Timeout reached after end of audio stream message sent"
+        )
         socket = null
         listener?.onError(AttendiConnectionError.DisconnectTimeout)
     }
-
-    /**
-     * Returns whether the WebSocket is currently open and ready to send/receive messages.
-     */
-    override fun isConnected(): Boolean = isSocketConnected
 
     /**
      * Sends a binary message (typically audio) to the Attendi server.
@@ -239,6 +242,6 @@ class AttendiWebSocketConnection(
     }
 
     private fun sendIfConnected(action: (WebSocket) -> Boolean): Boolean {
-        return socket?.takeIf { isSocketConnected }?.let { action(it) } ?: false
+        return socket?.let { action(it) } ?: false
     }
 }

@@ -11,14 +11,18 @@ import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAs
  * are received over time via WebSocket. It maintains an operation history and supports undoing or
  * redoing previously applied actions using their inverse representations.
  *
+ * The main entry point for updating this model is the [receiveActions] method,
+ * which applies new transcription actions, updates the internal state accordingly,
+ * and maintains undo/redo history.
+ *
  * @property state The current transcribed text and annotation state.
  * @property operationHistory The chronological list of applied transcription actions, each paired with its inverse.
  * @property undoneOperations A stack of recently undone actions, enabling redo functionality.
  */
 data class AttendiTranscribeStream(
-    val state: AttendiStreamState,
-    val operationHistory: List<UndoableTranscribeAction>,
-    val undoneOperations: List<UndoableTranscribeAction>
+    val state: AttendiStreamState = AttendiStreamState("", emptyList()),
+    val operationHistory: List<UndoableTranscribeAction> = emptyList(),
+    val undoneOperations: List<UndoableTranscribeAction> = emptyList()
 ) {
     /**
      * Updates the stream with a new list of [TranscribeAsyncAction]s.
