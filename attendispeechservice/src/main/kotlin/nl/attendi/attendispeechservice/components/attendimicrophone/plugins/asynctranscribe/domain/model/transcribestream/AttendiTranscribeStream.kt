@@ -1,7 +1,7 @@
-package nl.attendi.attendispeechservice.domain.model.transcribestream
+package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream
 
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncReplaceTextMapper
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncReplaceTextMapper
 
 /**
  * Represents the current state and history of a real-time transcription stream,

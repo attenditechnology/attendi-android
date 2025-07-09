@@ -1,6 +1,6 @@
-package nl.attendi.attendispeechservice.domain.model.transcribestream
+package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream
 
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
 
 /**
  * Represents a transcription action paired with its inverse, enabling undo and redo functionality.

@@ -1,9 +1,11 @@
 package nl.attendi.attendispeechservice.domain.model.transcribestream
 
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream.AttendiStreamState
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream.AttendiTranscribeStream
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
 import org.junit.Assert
 import org.junit.Test
 

@@ -38,11 +38,11 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiAsyncTranscribePlugin
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.AttendiAsyncTranscribePlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
-import nl.attendi.attendispeechservice.data.connection.websocket.AttendiWebSocketConnection
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.connection.websocket.AttendiWebSocketConnection
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
 import nl.attendi.attendispeechserviceexample.exampleAPIConfig
 import nl.attendi.attendispeechserviceexample.examples.connection.custom.CustomConnection
 import nl.attendi.attendispeechserviceexample.examples.connection.custom.CustomMessageDecoder

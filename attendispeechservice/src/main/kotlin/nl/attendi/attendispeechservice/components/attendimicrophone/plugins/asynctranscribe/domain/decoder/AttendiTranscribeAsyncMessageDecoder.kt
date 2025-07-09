@@ -1,6 +1,6 @@
-package nl.attendi.attendispeechservice.domain.decoder
+package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.decoder
 
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
 
 /**
  * A contract for decoding raw text-based messages (typically JSON) into domain-level actions.

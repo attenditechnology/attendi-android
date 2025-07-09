@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import nl.attendi.attendispeechservice.domain.model.transcribestream.AttendiStreamState
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream.AttendiStreamState
 
 class TwoMicrophonesStreamingScreenViewModel: ViewModel() {
 

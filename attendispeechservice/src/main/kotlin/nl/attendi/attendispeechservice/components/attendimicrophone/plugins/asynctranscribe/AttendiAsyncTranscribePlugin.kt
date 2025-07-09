@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechservice.components.attendimicrophone.plugins
+package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe
 
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -6,10 +6,11 @@ import nl.attendi.attendispeechservice.domain.connection.AttendiConnection
 import nl.attendi.attendispeechservice.domain.connection.AttendiConnectionError
 import nl.attendi.attendispeechservice.domain.connection.AttendiConnectionListener
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
-import nl.attendi.attendispeechservice.data.decoder.AttendiTranscribeAsyncDefaultMessageDecoder
-import nl.attendi.attendispeechservice.domain.decoder.AttendiTranscribeAsyncMessageDecoder
-import nl.attendi.attendispeechservice.domain.model.transcribestream.AttendiTranscribeStream
-import nl.attendi.attendispeechservice.data.connection.websocket.AttendiWebSocketConnection
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.decoder.AttendiTranscribeAsyncDefaultMessageDecoder
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.decoder.AttendiTranscribeAsyncMessageDecoder
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream.AttendiTranscribeStream
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.connection.websocket.AttendiWebSocketConnection
 
 /**
  * Represents possible errors that can occur during async transcription via [AttendiAsyncTranscribePlugin].
@@ -111,7 +112,9 @@ class AttendiAsyncTranscribePlugin(
 
                     override fun onError(error: AttendiConnectionError) {
                         forceStopMicrophone(state, "Async Transcribe Connection error")
-                        onStreamCompleted(transcribeStream, AttendiAsyncTranscribePluginError.Connection(error))
+                        onStreamCompleted(transcribeStream,
+                            AttendiAsyncTranscribePluginError.Connection(error)
+                        )
                     }
 
                     override fun onClose() {

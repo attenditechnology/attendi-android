@@ -2,11 +2,12 @@ package nl.attendi.attendispeechservice.mapper
 
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.response.TranscribeAsyncResponse
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response.TranscribeAsyncResponse
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.mapper.TranscribeAsyncActionMapper
 import nl.attendi.attendispeechservice.utils.JsonFileReader
 import org.junit.Assert
 import org.junit.Test

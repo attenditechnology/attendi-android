@@ -1,9 +1,9 @@
-package nl.attendi.attendispeechservice.data.decoder
+package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.decoder
 
 import kotlinx.serialization.SerializationException
-import nl.attendi.attendispeechservice.domain.decoder.AttendiTranscribeAsyncMessageDecoder
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.mapper.TranscribeAsyncActionMapper
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.decoder.AttendiTranscribeAsyncMessageDecoder
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.mapper.TranscribeAsyncActionMapper
 
 /**
  * Default implementation of [AttendiTranscribeAsyncMessageDecoder] provided by the Attendi SDK.
@@ -27,7 +27,8 @@ object AttendiTranscribeAsyncDefaultMessageDecoder : AttendiTranscribeAsyncMessa
      * @throws SerializationException If the JSON is malformed or does not match the expected schema.
      */
     override fun decode(response: String): List<TranscribeAsyncAction> {
-        val attendiResponse = AttendiTranscribeAsyncMessageDecoderUtils.decodeAttendiResponse(response)
+        val attendiResponse =
+            AttendiTranscribeAsyncMessageDecoderUtils.decodeAttendiResponse(response)
         return AttendiTranscribeAsyncMessageDecoderUtils.mapToActions(attendiResponse)
     }
 }

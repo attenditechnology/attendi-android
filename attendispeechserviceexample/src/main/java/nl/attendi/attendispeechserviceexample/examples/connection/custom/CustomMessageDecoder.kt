@@ -1,9 +1,9 @@
 package nl.attendi.attendispeechserviceexample.examples.connection.custom
 
-import nl.attendi.attendispeechservice.domain.decoder.AttendiTranscribeAsyncMessageDecoder
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncActionData
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncReplaceTextParameters
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.decoder.AttendiTranscribeAsyncMessageDecoder
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncActionData
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncReplaceTextParameters
 
 object CustomMessageDecoder : AttendiTranscribeAsyncMessageDecoder {
 

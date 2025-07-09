@@ -1,7 +1,7 @@
 package nl.attendi.attendispeechserviceexample.examples.streaming.twomicrophonesscreen
 
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.domain.model.transcribestream.AttendiTranscribeStream
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream.AttendiTranscribeStream
 
 data class TwoMicrophonesStreamingScreenModel(
     val shortTextFieldModel: TextFieldModel,

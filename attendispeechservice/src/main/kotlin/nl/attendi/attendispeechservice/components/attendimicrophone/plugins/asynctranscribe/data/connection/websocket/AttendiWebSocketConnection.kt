@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechservice.data.connection.websocket
+package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.connection.websocket
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

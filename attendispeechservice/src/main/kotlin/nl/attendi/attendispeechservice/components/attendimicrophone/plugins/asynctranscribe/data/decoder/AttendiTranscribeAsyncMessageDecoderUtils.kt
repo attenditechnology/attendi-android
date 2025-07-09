@@ -1,12 +1,12 @@
-package nl.attendi.attendispeechservice.data.decoder
+package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.decoder
 
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.response.TranscribeAsyncResponse
-import nl.attendi.attendispeechservice.domain.decoder.AttendiTranscribeAsyncMessageDecoder
-import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.mapper.TranscribeAsyncActionMapper
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response.TranscribeAsyncResponse
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.decoder.AttendiTranscribeAsyncMessageDecoder
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.mapper.TranscribeAsyncActionMapper
 
 /**
  * A utility object providing reusable functions for decoding and mapping

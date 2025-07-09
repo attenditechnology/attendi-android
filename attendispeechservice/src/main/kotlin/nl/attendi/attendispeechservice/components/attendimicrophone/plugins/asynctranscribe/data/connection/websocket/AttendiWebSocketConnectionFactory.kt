@@ -1,10 +1,10 @@
-package nl.attendi.attendispeechservice.data.connection.websocket
+package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.connection.websocket
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.request.TranscribeAsyncAppSettingsRequest
-import nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.request.TranscribeAsyncClientConfigurationMessageRequest
-import nl.attendi.attendispeechservice.data.service.transcribeasyncservice.dto.request.TranscribeAsyncVoiceEditingAppSettingsRequest
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.request.TranscribeAsyncAppSettingsRequest
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.request.TranscribeAsyncClientConfigurationMessageRequest
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.request.TranscribeAsyncVoiceEditingAppSettingsRequest
 import java.util.UUID
 
 /**
