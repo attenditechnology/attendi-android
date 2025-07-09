@@ -6,8 +6,8 @@ import nl.attendi.attendispeechservice.domain.connection.AttendiConnection
 import nl.attendi.attendispeechservice.domain.connection.AttendiConnectionError
 import nl.attendi.attendispeechservice.domain.connection.AttendiConnectionListener
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState
-import nl.attendi.attendispeechservice.data.decoder.AttendiDefaultMessageDecoder
-import nl.attendi.attendispeechservice.domain.decoder.AttendiMessageDecoder
+import nl.attendi.attendispeechservice.data.decoder.AttendiTranscribeAsyncDefaultMessageDecoder
+import nl.attendi.attendispeechservice.domain.decoder.AttendiTranscribeAsyncMessageDecoder
 import nl.attendi.attendispeechservice.domain.model.transcribestream.AttendiTranscribeStream
 import nl.attendi.attendispeechservice.data.connection.websocket.AttendiWebSocketConnection
 
@@ -32,7 +32,7 @@ sealed class AttendiAsyncTranscribePluginError {
 }
 
 /**
- * A plugin for real-time, asynchronous speech transcription using [AttendiConnection] and [AttendiMessageDecoder].
+ * A plugin for real-time, asynchronous speech transcription using [AttendiConnection] and [AttendiTranscribeAsyncMessageDecoder].
  * It is designed around the Strategy Design Pattern to promote extensibility and customizability.
  * Two key components — AttendiConnection and AttendiMessageDecoder — are injected via constructor parameters,
  * allowing users to swap or extend behavior without modifying the core plugin.
@@ -50,13 +50,13 @@ sealed class AttendiAsyncTranscribePluginError {
  * you can do so by providing custom implementations of the AttendiConnection and AttendiMessageDecoder interfaces.
  *
  * @param connection The connection implementation (e.g., [AttendiWebSocketConnection]) used to send audio and receive messages.
- * @param messageDecoder The decoder used to interpret JSON messages from the backend. Defaults to [AttendiDefaultMessageDecoder].
+ * @param messageDecoder The decoder used to interpret JSON messages from the backend. Defaults to [AttendiTranscribeAsyncDefaultMessageDecoder].
  * @param onStreamUpdated Callback invoked whenever the transcribe stream is updated with new actions.
  * @param onStreamCompleted Callback invoked when the session ends normally or with an error [AttendiAsyncTranscribePluginError].
  */
 class AttendiAsyncTranscribePlugin(
     private val connection: AttendiConnection,
-    private val messageDecoder: AttendiMessageDecoder = AttendiDefaultMessageDecoder,
+    private val messageDecoder: AttendiTranscribeAsyncMessageDecoder = AttendiTranscribeAsyncDefaultMessageDecoder,
     private val onStreamConnecting: () -> Unit = { },
     private val onStreamStarted: () -> Unit = { },
     private val onStreamUpdated: (AttendiTranscribeStream) -> Unit,

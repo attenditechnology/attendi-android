@@ -11,7 +11,7 @@ import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAs
  * Use this if you want to plug in your own decoder logic — for example, if your backend service
  * emits a different message format than Attendi's.
  */
-interface AttendiMessageDecoder {
+interface AttendiTranscribeAsyncMessageDecoder {
 
     /**
      * Decodes a raw message string into a list of [TranscribeAsyncAction] objects.

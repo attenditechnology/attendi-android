@@ -1,11 +1,11 @@
 package nl.attendi.attendispeechserviceexample.examples.connection.custom
 
-import nl.attendi.attendispeechservice.domain.decoder.AttendiMessageDecoder
+import nl.attendi.attendispeechservice.domain.decoder.AttendiTranscribeAsyncMessageDecoder
 import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncAction
 import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncActionData
 import nl.attendi.attendispeechservice.domain.model.transcribeasync.TranscribeAsyncReplaceTextParameters
 
-object CustomMessageDecoder : AttendiMessageDecoder {
+object CustomMessageDecoder : AttendiTranscribeAsyncMessageDecoder {
 
     override fun decode(response: String): List<TranscribeAsyncAction> {
         val list: MutableList<TranscribeAsyncAction> = mutableListOf()
