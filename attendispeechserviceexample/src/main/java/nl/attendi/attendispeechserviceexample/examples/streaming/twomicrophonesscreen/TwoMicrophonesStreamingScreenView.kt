@@ -26,6 +26,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -33,13 +38,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.AttendiAsyncTranscribePlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.AttendiAsyncTranscribePlugin
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.connection.websocket.AttendiWebSocketConnection
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
 import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
@@ -59,6 +66,44 @@ fun TwoMicrophonesScreenStreamingView(
     model: TwoMicrophonesStreamingScreenModel,
     modifier: Modifier = Modifier
 ) {
+    var shortTextFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = model.shortTextFieldModel.text,
+                selection = TextRange(model.shortTextFieldModel.text.length)
+            )
+        )
+    }
+
+    // Sync local value with model if the text changed programmatically
+    LaunchedEffect(model.shortTextFieldModel.text) {
+        if (model.shortTextFieldModel.text != shortTextFieldValue.text) {
+            shortTextFieldValue = TextFieldValue(
+                text = model.shortTextFieldModel.text,
+                selection = TextRange(model.shortTextFieldModel.text.length) // move cursor to end
+            )
+        }
+    }
+
+    var longTextFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = model.longTextFieldModel.text,
+                selection = TextRange(model.longTextFieldModel.text.length)
+            )
+        )
+    }
+
+    // Sync local value with model if the text changed programmatically
+    LaunchedEffect(model.longTextFieldModel.text) {
+        if (model.longTextFieldModel.text != longTextFieldValue.text) {
+            longTextFieldValue = TextFieldValue(
+                text = model.longTextFieldModel.text,
+                selection = TextRange(model.longTextFieldModel.text.length) // move cursor to end
+            )
+        }
+    }
+
     Column(
         modifier = modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -70,9 +115,10 @@ fun TwoMicrophonesScreenStreamingView(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextField(
-                value = model.shortTextFieldModel.text,
-                onValueChange = {
-                    model.shortTextFieldModel.onTextChange(it)
+                value = shortTextFieldValue,
+                onValueChange = { newValue ->
+                    shortTextFieldValue = newValue
+                    model.shortTextFieldModel.onTextChange(newValue.text)
                 },
                 visualTransformation = mapAnnotatedTextTransformation(
                     annotations = model.shortTextFieldModel.annotations,
@@ -124,9 +170,10 @@ fun TwoMicrophonesScreenStreamingView(
                 .padding(8.dp)
         ) {
             TextField(
-                value = model.longTextFieldModel.text,
-                onValueChange = {
-                    model.longTextFieldModel.onTextChange(it)
+                value = longTextFieldValue,
+                onValueChange = { newValue ->
+                    longTextFieldValue = newValue
+                    model.longTextFieldModel.onTextChange(newValue.text)
                 },
                 visualTransformation = mapAnnotatedTextTransformation(
                     annotations = model.longTextFieldModel.annotations,
