@@ -19,7 +19,7 @@ import java.util.UUID
  * Consumers can use this if they are implementing a custom connection
  * or want full control over the config message content.
  */
-internal object AttendiWebSocketConnectionFactory {
+object AttendiWebSocketConnectionFactory {
 
     /**
      * Builds a JSON configuration message to initialize a transcription session.
@@ -31,8 +31,7 @@ internal object AttendiWebSocketConnectionFactory {
      * @param model The transcription model to use (e.g., `"ResidentialCare"`).
      * @param reportId Optional report identifier. A random UUID is used by default.
      * @param sessionId Optional session identifier. A random UUID is used by default.
-     * @param isVoiceEditingEnabled Whether voice editing features should be enabled.
-     * @param shouldUseAttendiEntityRecognitionModel Whether to enable Attendi-specific entity recognition.
+     * @param isVoiceEditingEnabled Whether schrijfhulp is enabled or not. By default is enabled.
      *
      * @return A JSON string representing the configuration message.
      */
@@ -41,8 +40,7 @@ internal object AttendiWebSocketConnectionFactory {
         model: String = "ResidentialCare",
         reportId: String = UUID.randomUUID().toString(),
         sessionId: String = UUID.randomUUID().toString(),
-        isVoiceEditingEnabled: Boolean = false,
-        shouldUseAttendiEntityRecognitionModel: Boolean = false
+        isVoiceEditingEnabled: Boolean = true
     ) : String {
         return Json.encodeToString(
             TranscribeAsyncClientConfigurationMessageRequest(
@@ -52,8 +50,7 @@ internal object AttendiWebSocketConnectionFactory {
                 sessionId = sessionId,
                 features = TranscribeAsyncAppSettingsRequest(
                     voiceEditing = TranscribeAsyncVoiceEditingAppSettingsRequest(
-                        isEnabled = isVoiceEditingEnabled,
-                        useAttendiEntityRecognitionModel = shouldUseAttendiEntityRecognitionModel
+                        isEnabled = isVoiceEditingEnabled
                     )
                 )
             )

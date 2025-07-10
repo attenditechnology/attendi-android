@@ -39,9 +39,5 @@ data class TranscribeAsyncVoiceEditingAppSettingsRequest(
     /**
      * When enabled it allows voice editing, otherwise voice editing is disabled.
      */
-    val isEnabled: Boolean,
-    /**
-     * When enabled it uses Attendi's entity recognition model.
-     */
-    val useAttendiEntityRecognitionModel: Boolean
+    val isEnabled: Boolean
 )
