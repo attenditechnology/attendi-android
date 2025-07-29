@@ -1,16 +1,16 @@
-package nl.attendi.attendispeechservice.domain.model.transcribestream
+package nl.attendi.attendispeechservice.asynctranscribeplugin.model.transcribestream
 
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream.AttendiStreamState
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncActionData
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationParameters
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncActionData
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationEntityType
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationIntentStatus
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationParameters
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.components.attendirecorder.plugins.asynctranscribeplugin.model.AttendiStreamState
 
 object AttendiStreamStateFactory {
 
-    fun makeSample(): AttendiStreamState {
+    fun createSample(): AttendiStreamState {
         return AttendiStreamState(
             text = "Attendi",
             annotations = listOf(

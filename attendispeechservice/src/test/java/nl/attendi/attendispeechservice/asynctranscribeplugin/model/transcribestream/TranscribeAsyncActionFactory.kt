@@ -1,17 +1,17 @@
-package nl.attendi.attendispeechservice.domain.model.transcribestream
+package nl.attendi.attendispeechservice.asynctranscribeplugin.model.transcribestream
 
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncActionData
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationParameters
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncRemoveAnnotationParameters
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncReplaceTextParameters
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncActionData
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationEntityType
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationIntentStatus
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationParameters
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncRemoveAnnotationParameters
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncReplaceTextParameters
 
 object TranscribeAsyncActionFactory {
 
-    fun makeSample(): List<TranscribeAsyncAction> {
+    fun createSample(): List<TranscribeAsyncAction> {
         return listOf(
             TranscribeAsyncAction.ReplaceText(
                 actionData = TranscribeAsyncActionData(

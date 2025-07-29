@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response
+package nl.attendi.attendispeechservice.services.asynctranscribe.dto.response
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

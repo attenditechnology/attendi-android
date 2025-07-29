@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync
+package nl.attendi.attendispeechservice.services.asynctranscribe.model
 
 data class TranscribeAsyncReplaceTextParameters(
     val startCharacterIndex: Int,

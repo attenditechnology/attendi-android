@@ -1,11 +1,11 @@
-package nl.attendi.attendispeechservice.domain.model.transcribestream
+package nl.attendi.attendispeechservice.asynctranscribeplugin.model.transcribestream
 
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream.AttendiStreamState
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribestream.AttendiTranscribeStream
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationEntityType
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationIntentStatus
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.components.attendirecorder.plugins.asynctranscribeplugin.model.AttendiStreamState
+import nl.attendi.attendispeechservice.components.attendirecorder.plugins.asynctranscribeplugin.model.AttendiTranscribeStream
 import org.junit.Assert
 import org.junit.Test
 
@@ -43,9 +43,9 @@ class AttendiTranscribeStreamTests {
             operationHistory = emptyList(),
             undoneOperations = emptyList()
         )
-        val sampleAttendiStreamState = AttendiStreamStateFactory.makeSample()
+        val sampleAttendiStreamState = AttendiStreamStateFactory.createSample()
 
-        val sut = initialStream.receiveActions(TranscribeAsyncActionFactory.makeSample())
+        val sut = initialStream.receiveActions(TranscribeAsyncActionFactory.createSample())
 
         Assert.assertEquals("Attendi", sut.state.text)
         Assert.assertEquals(4, sut.state.annotations.size)
@@ -169,7 +169,7 @@ class AttendiTranscribeStreamTests {
             operationHistory = emptyList(),
             undoneOperations = emptyList()
         )
-        initialStream = initialStream.receiveActions(TranscribeAsyncActionFactory.makeSample())
+        initialStream = initialStream.receiveActions(TranscribeAsyncActionFactory.createSample())
 
         var sut = initialStream.undoOperations(4)
 
@@ -250,7 +250,7 @@ class AttendiTranscribeStreamTests {
             operationHistory = emptyList(),
             undoneOperations = emptyList()
         )
-        initialStream = initialStream.receiveActions(TranscribeAsyncActionFactory.makeSample())
+        initialStream = initialStream.receiveActions(TranscribeAsyncActionFactory.createSample())
 
         val sut = initialStream.undoOperations(20)
 
@@ -271,7 +271,7 @@ class AttendiTranscribeStreamTests {
             operationHistory = emptyList(),
             undoneOperations = emptyList()
         )
-        initialStream = initialStream.receiveActions(TranscribeAsyncActionFactory.makeSample())
+        initialStream = initialStream.receiveActions(TranscribeAsyncActionFactory.createSample())
 
         var sut = initialStream.undoOperations(4).redoOperations(1)
 
@@ -335,7 +335,7 @@ class AttendiTranscribeStreamTests {
             operationHistory = emptyList(),
             undoneOperations = emptyList()
         )
-        initialStream = initialStream.receiveActions(TranscribeAsyncActionFactory.makeSample())
+        initialStream = initialStream.receiveActions(TranscribeAsyncActionFactory.createSample())
 
         val sut = initialStream.undoOperations(4).redoOperations(20)
 

@@ -1,14 +1,13 @@
-package nl.attendi.attendispeechservice.mapper
+package nl.attendi.attendispeechservice.asynctranscribeplugin.mapper
 
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response.TranscribeAsyncResponse
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.mapper.TranscribeAsyncActionMapper
-import nl.attendi.attendispeechservice.utils.JsonFileReader
+import nl.attendi.attendispeechservice.asynctranscribeplugin.utils.JsonFileReader
+import nl.attendi.attendispeechservice.services.asynctranscribe.dto.response.TranscribeAsyncResponse
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationEntityType
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationIntentStatus
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.components.attendirecorder.plugins.asynctranscribeplugin.mapper.TranscribeAsyncActionMapper
 import org.junit.Assert
 import org.junit.Test
 
@@ -16,15 +15,15 @@ class TranscribeAsyncActionMapperTests {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun makeResponse(fileName: String): TranscribeAsyncResponse {
+    private fun createResponse(fileName: String): TranscribeAsyncResponse {
         val jsonResponse =
-            JsonFileReader.read("data/transcribeasyncservice/dto/response/${fileName}")
+            JsonFileReader.read("services/asynctranscribe/dto/response/${fileName}")
         return json.decodeFromString<TranscribeAsyncResponse>(jsonResponse)
     }
 
     @Test
     fun map_whenResponseContainsAddAnnotationTranscriptionTentative_returnsListWithAddAnnotationTranscriptionTentativeAction() {
-        val response = makeResponse("TranscribeAsyncSchemaAddAnnotationTranscriptionTentative")
+        val response = createResponse("TranscribeAsyncSchemaAddAnnotationTranscriptionTentative")
 
         val model = TranscribeAsyncActionMapper.map(response)
 
@@ -43,7 +42,7 @@ class TranscribeAsyncActionMapperTests {
 
     @Test
     fun map_whenResponseContainsAddAnnotationIntent_returnsListWithAddAnnotationIntentAction() {
-        val response = makeResponse("TranscribeAsyncSchemaAddAnnotationIntent")
+        val response = createResponse("TranscribeAsyncSchemaAddAnnotationIntent")
 
         val model = TranscribeAsyncActionMapper.map(response)
 
@@ -83,7 +82,7 @@ class TranscribeAsyncActionMapperTests {
 
     @Test
     fun map_whenResponseContainsAddAnnotationEntity_returnsListWithAddAnnotationEntityAction() {
-        val response = makeResponse("TranscribeAsyncSchemaAddAnnotationEntity")
+        val response = createResponse("TranscribeAsyncSchemaAddAnnotationEntity")
 
         val model = TranscribeAsyncActionMapper.map(response)
 
@@ -101,7 +100,7 @@ class TranscribeAsyncActionMapperTests {
 
     @Test
     fun map_whenResponseContainsUpdateAnnotationTranscriptionTentative_returnsListWithUpdateAnnotationTranscriptionTentativeAction() {
-        val response = makeResponse("TranscribeAsyncSchemaUpdateAnnotationTranscriptionTentative")
+        val response = createResponse("TranscribeAsyncSchemaUpdateAnnotationTranscriptionTentative")
 
         val model = TranscribeAsyncActionMapper.map(response)
 
@@ -120,7 +119,7 @@ class TranscribeAsyncActionMapperTests {
 
     @Test
     fun map_whenResponseContainsUpdateAnnotationEntity_returnsListWithUpdateAnnotationEntityAction() {
-        val response = makeResponse("TranscribeAsyncSchemaUpdateAnnotationEntity")
+        val response = createResponse("TranscribeAsyncSchemaUpdateAnnotationEntity")
 
         val model = TranscribeAsyncActionMapper.map(response)
 
@@ -138,7 +137,7 @@ class TranscribeAsyncActionMapperTests {
 
     @Test
     fun map_whenResponseContainsReplaceText_returnsListWithReplaceTextAction() {
-        val response = makeResponse("TranscribeAsyncSchemaReplaceText")
+        val response = createResponse("TranscribeAsyncSchemaReplaceText")
 
         val model = TranscribeAsyncActionMapper.map(response)
 
@@ -153,7 +152,7 @@ class TranscribeAsyncActionMapperTests {
 
     @Test
     fun map_whenResponseContainsRemoveAnnotation_returnsListWithRemoveAnnotationAction() {
-        val response = makeResponse("TranscribeAsyncSchemaRemoveAnnotation")
+        val response = createResponse("TranscribeAsyncSchemaRemoveAnnotation")
 
         val model = TranscribeAsyncActionMapper.map(response)
 
@@ -166,7 +165,7 @@ class TranscribeAsyncActionMapperTests {
 
     @Test
     fun map_whenResponseContainsMixedAnnotations_returnsListWithMixedAnnotationActions() {
-        val response = makeResponse("TranscribeAsyncSchemaMixedAnnotations")
+        val response = createResponse("TranscribeAsyncSchemaMixedAnnotations")
 
         val model = TranscribeAsyncActionMapper.map(response)
 

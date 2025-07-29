@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.request
+package nl.attendi.attendispeechservice.services.asynctranscribe.dto.request
 
 import kotlinx.serialization.Serializable
 
@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
  * This message is sent to the transcription server when the microphone starts recording.
  */
 @Serializable
-data class TranscribeAsyncClientConfigurationMessageRequest(
+internal data class TranscribeAsyncMessageRequest(
     /**
      * Is always "ClientConfiguration" for this message type. However, the serialization somehow
      * doesn't include the messageType in the JSON when we use a default value for the field.
@@ -21,7 +21,6 @@ data class TranscribeAsyncClientConfigurationMessageRequest(
      * Allows for associating multiple transcriptions into `sessions` and `reports`.
      */
     val reportId: String?,
-    val sessionId: String?,
     val features: TranscribeAsyncAppSettingsRequest? = null
 )
 
@@ -30,12 +29,12 @@ data class TranscribeAsyncClientConfigurationMessageRequest(
  * us to send feature information, such as whether we can use voice editing or not.
  */
 @Serializable
-data class TranscribeAsyncAppSettingsRequest(
+internal data class TranscribeAsyncAppSettingsRequest(
     val voiceEditing: TranscribeAsyncVoiceEditingAppSettingsRequest
 )
 
 @Serializable
-data class TranscribeAsyncVoiceEditingAppSettingsRequest(
+internal data class TranscribeAsyncVoiceEditingAppSettingsRequest(
     /**
      * When enabled it allows voice editing, otherwise voice editing is disabled.
      */

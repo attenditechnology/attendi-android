@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechservice.domain.connection
+package nl.attendi.attendispeechservice.services.asynctranscribe
 
 /**
  * A generic contract for establishing and interacting with a streaming or real-time connection.
@@ -6,14 +6,14 @@ package nl.attendi.attendispeechservice.domain.connection
  * Consumers can implement this interface to use their own backend services or protocols.
  * This allows flexibility in how messages are sent or received (e.g., using a custom WebSocket, HTTP/2, etc).
  */
-interface AttendiConnection {
+interface AsyncTranscribeService {
 
     /**
      * Initiates the connection and sets a listener for lifecycle and message events.
      *
-     * @param listener An implementation of [AttendiConnectionListener] to handle callbacks.
+     * @param listener An implementation of [AsyncTranscribeServiceListener] to handle callbacks.
      */
-    suspend fun connect(listener: AttendiConnectionListener)
+    suspend fun connect(listener: AsyncTranscribeServiceListener)
 
     /**
      * Closes the connection if it is currently active.
@@ -40,10 +40,10 @@ interface AttendiConnection {
 /**
  * Listener for observing connection events and handling incoming messages.
  *
- * Used in conjunction with [AttendiConnection] to respond to connection lifecycle changes
+ * Used in conjunction with [AsyncTranscribeService] to respond to connection lifecycle changes
  * and receive real-time data.
  */
-interface AttendiConnectionListener {
+interface AsyncTranscribeServiceListener {
 
     /** Called when the connection has been successfully opened. */
     fun onOpen()
@@ -60,36 +60,43 @@ interface AttendiConnectionListener {
      *
      * @param error The specific error that occurred.
      */
-    fun onError(error: AttendiConnectionError)
+    fun onError(error: AsyncTranscribeServiceError)
 
     /** Called when the connection is closed or terminated. */
     fun onClose()
 }
 
-
 /**
  * Describes the various types of connection-related errors that may occur.
  *
- * These errors are passed through [AttendiConnectionListener.onError] to help diagnose
+ * These errors are passed through [AsyncTranscribeServiceListener.onError] to help diagnose
  * and respond to failures.
  */
-sealed class AttendiConnectionError {
+sealed class AsyncTranscribeServiceError(message: String?) : Exception(message) {
 
     /** Indicates a failure to establish the connection. */
-    data class FailedToConnect(val message: String? = null, val cause: Throwable? = null) :
-        AttendiConnectionError()
+    data class FailedToConnect(override val message: String?) : AsyncTranscribeServiceError(message)
 
     /** Indicates the connection closed unexpectedly or with an abnormal code. */
-    data class ClosedAbnormally(val message: String? = null, val cause: Throwable? = null) :
-        AttendiConnectionError()
+    data class ClosedAbnormally(override val message: String?) :
+        AsyncTranscribeServiceError(message)
 
     /** Connection attempt exceeded the allowed timeout. */
-    data object ConnectTimeout : AttendiConnectionError()
+    data object ConnectTimeout : AsyncTranscribeServiceError("Connection attempt timed out") {
+        // Serializable object must implement 'readResolve'. This is because when serializing/deserializing
+        // the system doesn't understand that this class is meant to be a singleton and thus it needs
+        // to implement readResolve to return always the same instance.
+        private fun readResolve(): Any = ConnectTimeout
+    }
 
     /** Disconnection attempt exceeded the allowed timeout. */
-    data object DisconnectTimeout : AttendiConnectionError()
+    data object DisconnectTimeout : AsyncTranscribeServiceError("Disconnection attempt timed out") {
+        // Serializable object must implement 'readResolve'. This is because when serializing/deserializing
+        // the system doesn't understand that this class is meant to be a singleton and thus it needs
+        // to implement readResolve to return always the same instance.
+        private fun readResolve(): Any = DisconnectTimeout
+    }
 
     /** An unknown or unclassified connection error. */
-    data class Unknown(val message: String? = null, val cause: Throwable? = null) :
-        AttendiConnectionError()
+    data class Unknown(override val message: String?) : AsyncTranscribeServiceError(message)
 }
