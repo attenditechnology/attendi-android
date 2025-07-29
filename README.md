@@ -1,10 +1,8 @@
 # Attendi Speech Service for Android
 
-The Attendi Speech Service Android SDK provides the `AttendiMicrophone` component: a `Jetpack Composable` microphone button that can be used to record audio and perform arbitrary tasks with that audio, such as audio transcription.
+The Attendi Speech SDK provides tools for capturing and processing audio in Android applications. It includes `AttendiMicrophone`, a customizable Jetpack Compose component, and `AttendiRecorder`, a suspendable interface for low-level audio recording.
 
-The component is built with extensibility in mind. It can be extended with plugins that add functionality to the component using the component's plugin APIs. Arbitrary logic can for instance be executed at certain points in the component's lifecycle, such as before recording starts, or when an error occurs.
-
-The `AttendiClient` class provides an interface to easily communicate with the Attendi Speech Service backend APIs.
+The SDK is designed with extensibility in mind, supporting plugins to customize behavior like transcription, feedback, and error handling.
 
 ## Getting started
 
@@ -15,7 +13,7 @@ The SDK is available as a Kotlin Android library package.
 You can install the package by either downloading it directly from the package page on GitHub Packages, by updating your app's build.gradle file:
 
 ```kotlin
-implementation 'nl.attendi:attendispeechservice:<version>'
+implementation "nl.attendi:attendispeechservice:<version>"
 ```
 
 or you can update the `pom.xml` file by adding the following repository and dependency:
@@ -59,109 +57,165 @@ dependencyResolutionManagement {
 }
 ```
 
+## Core Components
+
+### AttendiRecorder
+
+A suspendable interface for recording audio using Android’s AudioRecord API. It supports:
+* Start/stop recording (with optional delays)
+* StateFlow-based state observation
+* Resource management
+* Plugin-driven behavior via AttendiRecorderPlugin
+
+### AttendiMicrophone
+A Jetpack Compose component for audio capture and plugin-driven behavior. Supports customization and user interaction hooks.
+
 ## Usage
 
-After installing the package, you can use the microphone component in your project:
+After installing the package, you can use the microphone component and/or the recorder component in your project:
 
+AttendiMicrophone Example: 
 ```kotlin
-import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
+import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophone
 
 // within some ComponentActivity or Jetpack Composable
 
 AttendiMicrophone(
-    // We can use some general Compose modifiers here, such as `padding`, but some like
-    // `size` won't work. In general, check first whether `AttendiMicrophone` has a parameter
-    // to change the aspect of the microphone that you want to change.
-    modifier = Modifier
-        .border(1.dp, pinkColor, RoundedCornerShape(percent = 50))
-        .background(Color.White),
-    // Change the microphone's size
-    size = 64.dp,
-    // Change the microphone's color
-    colors = AttendiMicrophoneDefaults.colors(baseColor = myColor),
-    // Or do this if you need more control over the microphone's colors
-    // colors = AttendiMicrophoneDefaults.colors(
-    //     inactiveBackgroundColor = myColor,
-    //     inactiveForegroundColor = Color.White,
-    //     activeBackgroundColor = myColor,
-    //     activeForegroundColor = Color.White,
-    // ),
-    // Add plugins if necessary. These extend the functionality of the microphone component.
-    plugins = listOf(
-        AttendiErrorPlugin(),
-        AttendiTranscribePlugin(apiConfig = exampleAPIConfig),
-        // Anonymous objects allow us to create a plugin without having to create a new class,
-        // thereby giving access to our view's state.
-        object : AttendiMicrophonePlugin {
-            override fun activate(state: AttendiMicrophoneState) {
-                state.onUIState {
-                    microphoneUIState = it
+    recorder = AttendiRecorderFactory.create(
+        plugins = listOf(
+            AttendiErrorPlugin(context = context),
+            ExampleWavTranscribePlugin(context = context),
+            AttendiTranscribePlugin(
+                service = AttendiTranscribeServiceFactory.create(
+                    ExampleAttendiTranscribeAPI.transcribeAPIConfig
+                ),
+                // Ignoring the returned error for brevity
+                onTranscribeCompleted = { transcript, _ ->
+                    shortText = transcript ?: ""
                 }
-            }
-        }
+            ),
+            ExampleErrorLoggerPlugin()
+        )
     ),
-    // Use `onEvent` to listen to arbitrary events
-    onEvent = { name, data ->
-        when (name) {
-            // This name is specified by the plugin firing the event
-            "attendi-transcribe" -> {
-                (data as? String)?.let {
-                    println("showcasing arbitrary events: $it")
-                }
-            }
-        }
-    },
-    // We could also have done this instead of defining the closure below
-    // onResult = { print(it) }
-) { print(it) }
+    plugins = listOf(
+        AttendiVolumeFeedbackPlugin()
+    )
+)
 ```
 
-In the example above, the `AttendiMicrophone` component is used to transcribe audio. The `AttendiTranscribePlugin` plugin adds the transcription functionality and the `AttendiErrorPlugin` plugin tells the component what to do when an error occurs.
+AttendiRecorder Example:
+```kotlin
+import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderImpl
 
-For more details on the `AttendiMicrophone`'s API, see its docstring.
+// within any class, usually inside a viewModel class
 
-## Communicating with the `AttendiMicrophone` component
+val recorder: AttendiRecorder = AttendiRecorderFactory.create(
+    plugins = listOf(
+        AttendiAsyncTranscribePlugin(
+            transcribeAsyncService = CustomAsyncTranscribeService,
+            serviceMessageDecoder = CustomMessageDecoder,
+            onStreamStarted = {
+                // Live stream started
+            },
+            onStreamUpdated = { stream ->
+                // Live stream updated with stream model
+                // You can access the stream text via stream.state.text
+            },
+            onStreamCompleted = { stream: AttendiTranscribeStream, error: Exception? ->
+                // Live stream completed with stream or error. If no error occurred, `error` is `null`
+            }
+        ),
+        AttendiAudioNotificationPlugin(context = applicationContext),
+        AttendiStopOnAudioFocusLossPlugin(context = applicationContext),
+        AttendiErrorPlugin(context = applicationContext),
+        ExampleErrorLoggerPlugin()
+    )
+)
+```
 
-The `AttendiMicrophone` exposes two callbacks in its initializer: `onEvent` and `onResult`. The `onResult` callback can be called by plugins when they want to signal a result to the client when that result is in text (string) form. As seen in the example above, the text can be accessed by the client by providing a closure to the `onResult` parameter.
+## Plugin System
 
-The `onEvent` callback can be called by plugins when they want to signal a more general event to the client. Plugins can call `onEvent` and pass it an event name and a result object. The client can then listen for these events by providing a closure to the `onEvent` parameter. The client can then check the event name and the result object to determine what to do.
-
-## Creating a plugin
-
-**Warning: the microphone's plugin APIs are still under development and subject to change.**
-
-Plugins allow the microphone component's functionality to be extended. The component exposes a plugin API consisting of functions that e.g. allow plugins to execute arbitrary logic at certain points in the component's lifecycle. A plugin is a class that implements the `AttendiMicrophonePlugin` interface.
-
-The functionality of any plugin is implemented in its `activate` method. This method is called when the microphone is first initialized, and takes as input a reference to the state of the corresponding microphone component, which allows us to modify that state and change the behavior of the component. Any logic that needs to run when the microphone is removed from the view should be implemented in the `deactivate` method. This might for instance be necessary when the plugin changes some global state. As an example, the `AttendiErrorPlugin` plugin is implemented as follows:
+Plugins implement AttendiRecorderPlugin or AttendiMicrophonePlugin equivalents and hook into lifecycle states for extensibility.
 
 ```kotlin
-class AttendiErrorPlugin : AttendiMicrophonePlugin {
-    // The `activate` method is called when the microphone is first initialized and takes as input a reference to the microphone component's state.
-    override fun activate(state: AttendiMicrophoneState) {
-        // Use the `mic.onError` plugin API to add a callback that is called when an error occurs.
-        state.onError {
-            // The `showDialog` API shows a dialog to the user.
-            state.showDialog {
-                AlertDialog(onDismissRequest = {
-                    state.isDialogOpen = false
-                },
-                    title = { Text(state.context.getString(R.string.error_title)) },
-                    text = { Text(state.context.getString(R.string.error_body, it.message)) },
-                    confirmButton = {
-                        Button(onClick = { state.isDialogOpen = false }) {
-                            Text(state.context.getString(R.string.ok))
-                        }
-                    })
-            }
 
-            // Vibrate the device.
-            state.vibrate()
+class MyCustomRecorderPlugin : AttendiRecorderPlugin {
+
+    override suspend fun activate(model: AttendiRecorderModel) {
+        model.onBeforeStartRecording {
+            // Called just before a recording is about to start
         }
+
+        model.onAudio { audioFrame ->
+            // Called when the recorder captured an audio frame
+        }
+
+        model.onStopRecording {
+            // Called when the recording stopped
+        }
+
+        model.onError { error ->
+            // Called when an error occurred during the recording
+        }
+    }
+
+    override suspend fun deactivate(model: AttendiRecorderModel) {
+        // Called when the recorder is disposed.
+        // Use this to clean up any ongoing resources or subscriptions
     }
 }
 ```
 
+```kotlin
+
+class MyCustomMicrophonePlugin : AttendiMicrophonePlugin {
+
+    override suspend fun activate(recorderModel: AttendiRecorderModel, microphoneModel: AttendiMicrophoneModel) {
+        recorderModel.onAudio { audioFrame ->
+           // Update microphone volume levels when receiving audioFrames
+           microphoneModel.updateVolume(audioFrame.volume)
+        }
+    }
+
+    override suspend fun deactivate(recorderModel: AttendiRecorderModel, microphoneModel: AttendiMicrophoneModel) {
+        // Called when the microphone component is disposed.
+        // Use this to clean up any ongoing resources or subscriptions
+    }
+}
+```
+
+We offer out of the box plugins to be used with specific purposes:
+
+### Recorder Plugins
+
+* AttendiTranscribePlugin – Sends audio to a backend sync transcription API, such as Attendi’s. Designed to be extensible to support other providers as well
+* AttendiAsyncTranscribePlugin – Real-time transcription using a WebSocket-based connection, such as Attendi’s, with support for custom or alternative streaming APIs
+* AttendiAudioNotificationPlugin – Audible start/stop cues
+* AttendiErrorPlugin – Plays error sound and vibrates on failure
+* AttendiStopOnAudioFocusLossPlugin – Stops recording on focus loss
+
+### Microphone Plugins
+* AttendiVolumeFeedbackPlugin – Visual volume-level feedback
+
+## API Services
+
+The Attendi SDK provides three core service interfaces to communicate with Attendi's backend systems or your own custom infrastructure:
+
+* TranscribeService Interface & AttendiTranscribeServiceImpl (Default Implementation).
+Use case: Used for synchronous, single-shot transcription. You provide the complete audio recording, and the service returns a text transcription.
+Implementation: AttendiTranscribeServiceImpl connects to Attendi's backend to fulfill the request.
+
+* AsyncTranscribeService Interface & AttendiAsyncTranscribeServiceImpl (Default Implementation)
+Use case: Used for real-time or streaming transcription over WebSockets. You stream live audio, and the service returns a transcription object containing both text and rich annotations.
+Implementation: AttendiAsyncTranscribeServiceImpl handles the streaming protocol and communication with Attendi's backend services.
+
+* AttendiAuthenticationService
+Defines the contract for authenticating with Attendi’s backend. Implementations are responsible for retrieving and refreshing valid access tokens to authorize requests.
+
 ## Development
+
+### Testing
+When testing AttendiSpeechService, use a physical Android device rather than an emulator. The Android emulator has limited or unreliable support for AudioRecord, which may lead to audio capture failures or inconsistent behavior during recording.
 
 ### Network Security Configuration
 
@@ -187,5 +241,3 @@ This configuration is strictly for development and debugging purposes only. It s
 ## Issues
 
 If you encounter any issues, don't hesitate to contact us at `omar@attendi.nl` or `emiliano@attendi.nl`.
-
-
