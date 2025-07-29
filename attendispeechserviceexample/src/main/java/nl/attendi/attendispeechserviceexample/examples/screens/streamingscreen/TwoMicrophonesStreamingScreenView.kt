@@ -1,18 +1,4 @@
-/// Copyright 2023 Attendi Technology B.V.
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-
-package nl.attendi.attendispeechserviceexample.examples.streaming.twomicrophonesscreen
+package nl.attendi.attendispeechserviceexample.examples.screens.streamingscreen
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -35,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
@@ -44,16 +29,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.AttendiAsyncTranscribePlugin
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.connection.websocket.AttendiWebSocketConnection
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
-import nl.attendi.attendispeechserviceexample.exampleAPIConfig
-import nl.attendi.attendispeechserviceexample.examples.connection.custom.CustomConnection
-import nl.attendi.attendispeechserviceexample.examples.connection.custom.CustomMessageDecoder
-import nl.attendi.attendispeechserviceexample.examples.plugins.StopTranscriptionOnPausePlugin
+import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophone
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationType
 
 /**
  * This screen and the async transcribe plugin implementation below serves as an example how the streaming
@@ -66,6 +44,18 @@ fun TwoMicrophonesScreenStreamingView(
     model: TwoMicrophonesStreamingScreenModel,
     modifier: Modifier = Modifier
 ) {
+    /**
+     * `shortTextFieldValue` holds a `TextFieldValue` locally within the view rather than in the ViewModel.
+     * This is intentional to avoid exposing Compose-specific UI classes (`TextFieldValue`, `TextRange`)
+     * to the ViewModel layer, maintaining separation of concerns.
+     *
+     * Behavior:
+     * - When the underlying `model.shortTextFieldModel.text` changes programmatically, we update
+     *   `shortTextFieldValue` accordingly, ensuring the cursor is placed at the end of the new text.
+     * - This ensures a smooth UX where the cursor always jumps to the end on programmatic updates.
+     * - If the user manually changes the cursor position or text, it is respected and persisted
+     *   through `onValueChange`, which updates both the local state and the ViewModel.
+     */
     var shortTextFieldValue by remember {
         mutableStateOf(
             TextFieldValue(
@@ -144,23 +134,9 @@ fun TwoMicrophonesScreenStreamingView(
             Spacer(modifier = Modifier.width(16.dp))
 
             AttendiMicrophone(
-                plugins = listOf(
-                    AttendiErrorPlugin(),
-                    StopTranscriptionOnPausePlugin,
-                    AttendiAsyncTranscribePlugin(
-                        connection = CustomConnection,
-                        messageDecoder = CustomMessageDecoder,
-                        onStreamStarted = {
-                            model.shortTextFieldModel.onStreamStarted()
-                        },
-                        onStreamUpdated = { stream ->
-                            model.shortTextFieldModel.onStreamUpdated(stream)
-                        },
-                        onStreamCompleted = { stream, _ ->
-                            model.shortTextFieldModel.onStreamFinished(stream)
-                        }
-                    )
-                )
+                recorder = model.shortTextFieldModel.recorder,
+                plugins = model.shortTextFieldModel.plugins,
+                onMicrophoneTapCallback = model.shortTextFieldModel.onMicrophoneTapCallback
             )
         }
 
@@ -179,39 +155,23 @@ fun TwoMicrophonesScreenStreamingView(
                     annotations = model.longTextFieldModel.annotations,
                     startStreamCharacterOffset = model.longTextFieldModel.startStreamCharacterOffset
                 ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(0.dp)
-                    .onFocusChanged { model.longTextFieldModel.onFocusChange?.invoke(it.isFocused) }
-                    .testTag("TwoMicrophonesScreenStreamingLargeTextField"),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
                 ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(0.dp)
+                    .onFocusChanged { model.longTextFieldModel.onFocusChange?.invoke(it.isFocused) }
             )
+
             AttendiMicrophone(
-                plugins = listOf(
-                    AttendiErrorPlugin(),
-                    StopTranscriptionOnPausePlugin,
-                    AttendiAsyncTranscribePlugin(
-                        connection = AttendiWebSocketConnection(
-                            apiConfig = exampleAPIConfig
-                        ),
-                        onStreamStarted = {
-                            model.longTextFieldModel.onStreamStarted()
-                        },
-                        onStreamUpdated = { stream ->
-                            model.longTextFieldModel.onStreamUpdated(stream)
-                        },
-                        onStreamCompleted = { stream, _ ->
-                            model.longTextFieldModel.onStreamFinished(stream)
-                        }
-                    )
-                ),
-                modifier = Modifier.testTag("TwoMicrophonesScreenStreamingLargeTextMicrophone")
+                recorder = model.longTextFieldModel.recorder,
+                plugins = model.longTextFieldModel.plugins,
+                onMicrophoneTapCallback = model.longTextFieldModel.onMicrophoneTapCallback
             )
         }
     }
@@ -223,7 +183,6 @@ private fun mapAnnotatedTextTransformation(
 ): VisualTransformation {
     return VisualTransformation { originalText ->
         val builder = AnnotatedString.Builder(originalText.text)
-
         annotations.forEach { annotation ->
             val color = when (annotation.parameters.type) {
                 is TranscribeAsyncAnnotationType.TranscriptionTentative -> Color.Cyan
