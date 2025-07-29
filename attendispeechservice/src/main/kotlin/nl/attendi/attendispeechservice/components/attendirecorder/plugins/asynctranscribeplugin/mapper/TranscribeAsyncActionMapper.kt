@@ -1,19 +1,19 @@
-package nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.mapper
+package nl.attendi.attendispeechservice.components.attendirecorder.plugins.asynctranscribeplugin.mapper
 
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response.TranscribeAsyncActionTypeResponse
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response.TranscribeAsyncAnnotationEntityTypeResponse
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response.TranscribeAsyncAnnotationIntentStatusResponse
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response.TranscribeAsyncAnnotationParameterTypeResponse
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response.TranscribeAsyncAnnotationResponse
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.data.service.transcribeasyncservice.dto.response.TranscribeAsyncResponse
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAction
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncActionData
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationEntityType
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationIntentStatus
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationParameters
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncAnnotationType
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncRemoveAnnotationParameters
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.asynctranscribe.domain.model.transcribeasync.TranscribeAsyncReplaceTextParameters
+import nl.attendi.attendispeechservice.services.asynctranscribe.dto.response.TranscribeAsyncActionTypeResponse
+import nl.attendi.attendispeechservice.services.asynctranscribe.dto.response.TranscribeAsyncAnnotationEntityTypeResponse
+import nl.attendi.attendispeechservice.services.asynctranscribe.dto.response.TranscribeAsyncAnnotationIntentStatusResponse
+import nl.attendi.attendispeechservice.services.asynctranscribe.dto.response.TranscribeAsyncAnnotationParameterTypeResponse
+import nl.attendi.attendispeechservice.services.asynctranscribe.dto.response.TranscribeAsyncAnnotationResponse
+import nl.attendi.attendispeechservice.services.asynctranscribe.dto.response.TranscribeAsyncResponse
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAction
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncActionData
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationEntityType
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationIntentStatus
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationParameters
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncAnnotationType
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncRemoveAnnotationParameters
+import nl.attendi.attendispeechservice.services.asynctranscribe.model.TranscribeAsyncReplaceTextParameters
 
 /**
  * Utility object responsible for mapping a [TranscribeAsyncResponse]
@@ -58,7 +58,8 @@ object TranscribeAsyncActionMapper {
     }
 
     private fun mapAddAnnotation(action: TranscribeAsyncAnnotationResponse): TranscribeAsyncAction {
-        val parameters = action.parameters ?: error("Missing required field: 'parameters' in AddAnnotation")
+        val parameters =
+            action.parameters ?: error("Missing required field: 'parameters' in AddAnnotation")
         return when (parameters.type) {
             TranscribeAsyncAnnotationParameterTypeResponse.TRANSCRIPTION_TENTATIVE -> {
                 TranscribeAsyncAction.AddAnnotation(
@@ -135,7 +136,8 @@ object TranscribeAsyncActionMapper {
     }
 
     private fun mapUpdateAnnotation(action: TranscribeAsyncAnnotationResponse): TranscribeAsyncAction {
-        val parameters = action.parameters ?: error("Missing required field: 'parameters' in UpdateAnnotation")
+        val parameters =
+            action.parameters ?: error("Missing required field: 'parameters' in UpdateAnnotation")
         return when (parameters.type) {
             TranscribeAsyncAnnotationParameterTypeResponse.TRANSCRIPTION_TENTATIVE -> {
                 TranscribeAsyncAction.UpdateAnnotation(
@@ -211,7 +213,8 @@ object TranscribeAsyncActionMapper {
     }
 
     private fun mapRemoveAnnotation(action: TranscribeAsyncAnnotationResponse): TranscribeAsyncAction {
-        val parameters = action.parameters ?: error("Missing required field: 'parameters' in RemoveAnnotation")
+        val parameters =
+            action.parameters ?: error("Missing required field: 'parameters' in RemoveAnnotation")
         return TranscribeAsyncAction.RemoveAnnotation(
             actionData = TranscribeAsyncActionData(
                 id = action.id,
@@ -225,7 +228,8 @@ object TranscribeAsyncActionMapper {
     }
 
     private fun mapReplaceTextAnnotation(action: TranscribeAsyncAnnotationResponse): TranscribeAsyncAction {
-        val parameters = action.parameters ?: error("Missing required field: 'parameters' in ReplaceTextAnnotation")
+        val parameters = action.parameters
+            ?: error("Missing required field: 'parameters' in ReplaceTextAnnotation")
         return TranscribeAsyncAction.ReplaceText(
             actionData = TranscribeAsyncActionData(
                 id = action.id,
