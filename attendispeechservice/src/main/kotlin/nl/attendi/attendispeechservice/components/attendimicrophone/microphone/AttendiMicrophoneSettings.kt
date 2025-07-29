@@ -1,38 +1,50 @@
-/// Copyright 2023 Attendi Technology B.V.
-/// 
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-/// 
-///     http://www.apache.org/licenses/LICENSE-2.0
-/// 
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
+package nl.attendi.attendispeechservice.components.attendimicrophone.microphone
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+/**
+ * Configuration settings for customizing the appearance and behavior of the [AttendiMicrophone].
+ *
+ * @property size Sets the width and height of the microphone button.
+ * @property cornerRadius Optional corner radius. If null, a fully rounded (50%) shape is used.
+ * @property colors Visual color states for active/inactive modes.
+ * @property permissionsDeniedPermanentlyView Optional composable to show when microphone permissions
+ * are permanently denied by the user (e.g., via system settings).
+ */
+data class AttendiMicrophoneSettings(
+    var size: Dp = 48.dp,
+    var cornerRadius: Dp? = null,
+    var colors: AttendiMicrophoneColors = AttendiMicrophoneDefaults.colors(),
+    var permissionsDeniedPermanentlyView: (@Composable (onDismiss: () -> Unit) -> Unit)? = null
+)
+
+/**
+ * Defines the color scheme for different microphone states.
+ *
+ * @property activeForegroundColor Color of the icon/text when the microphone is active.
+ * @property activeBackgroundColor Background color when the microphone is active.
+ * @property inactiveForegroundColor Color of the icon/text when the microphone is inactive.
+ * @property inactiveBackgroundColor Background color when the microphone is inactive.
+ */
 @Immutable
-data class AttendiMicrophoneColors internal constructor(
+data class AttendiMicrophoneColors(
     val activeForegroundColor: Color,
     val activeBackgroundColor: Color,
     val inactiveForegroundColor: Color,
     val inactiveBackgroundColor: Color
 )
 
-const val defaultBaseColor = 0xFF1C69E8
-
 /**
  * Contains the default values used by [AttendiMicrophone].
  */
 @Immutable
 object AttendiMicrophoneDefaults {
-    val Size = 48.dp
+
+    private const val BASE_ATTENDI_COLOR = 0xFF1C69E8
 
     /**
      * Creates a [AttendiMicrophoneColors] that represents the default
@@ -50,7 +62,7 @@ object AttendiMicrophoneDefaults {
      * processing the recording.
      */
     fun colors(
-        baseColor: Color = Color(defaultBaseColor),
+        baseColor: Color = Color(BASE_ATTENDI_COLOR),
         inactiveBackgroundColor: Color = Color.Transparent,
         inactiveForegroundColor: Color = baseColor,
         activeBackgroundColor: Color = baseColor,
@@ -63,24 +75,3 @@ object AttendiMicrophoneDefaults {
             activeForegroundColor = activeForegroundColor,
         )
 }
-
-enum class MicrophoneVariant {
-    DEFAULT,
-    TRANSPARENT,
-    WHITE
-}
-
-enum class MicrophoneOptionsVariant {
-    VISIBLE_WHEN_NOT_STARTED_RECORDING,
-    ALWAYS_VISIBLE,
-    HIDDEN
-}
-
-data class MicrophoneSettings(
-    var size: Dp = 48.dp,
-    var colors: AttendiMicrophoneColors = AttendiMicrophoneDefaults.colors(),
-    var color: Color = Color(0xFF1C69E8),
-    var showOptionsVariant: MicrophoneOptionsVariant = MicrophoneOptionsVariant.HIDDEN,
-    var cornerRadius: Dp? = null,
-    var variant: MicrophoneVariant = MicrophoneVariant.DEFAULT,
-)

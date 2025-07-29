@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <!-- General UI Elements -->
-    <string name="cancel_reporting_method_dialog_body">Annuleren</string>
     <string name="cancel_body">U staat op het punt de rapportage te annuleren. Doorgaan?</string>
     <string name="yes">Ja</string>
     <string name="no">Nee</string>
     <string name="checkmark">Checkmark</string>
     <string name="close">Close</string>
     <string name="microphone_contentDescription">Microphone</string>
+    <string name="ok">Ok</string>
+    <string name="accept">Accepteren</string>
+    <string name="cancel">Annuleren</string>
 
     <!-- SOEP Method -->
     <string name="soep_title">SOEP</string>
@@ -55,7 +56,6 @@
     <string name="writing_assistant_item_subtitle">Vertel wat moet worden verwerkt tot rapportage</string>
     <string name="error_title">Foutmelding</string>
     <string name="error_body">Er is iets misgegaan: %1$s</string>
-    <string name="ok">Ok</string>
 
     <!-- Microphone permission denied dialog -->
     <string name="no_microphone_permission_dialog_title">Geen toegang tot de microfoon</string>
