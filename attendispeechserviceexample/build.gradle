@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'org.jetbrains.kotlin.plugin.serialization'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 def localProperties = new Properties()
@@ -13,13 +13,13 @@ if (localPropertiesFile.exists()) {
 def attendiCustomerKey = localProperties.getProperty("ATTENDI_CUSTOMER_KEY", "")
 
 android {
-    compileSdk 33
+
+    compileSdk compile_sdk_version
 
     defaultConfig {
         applicationId "nl.attendi.attendispeechserviceexample"
-        minSdk 26
-        //noinspection OldTargetApi 33 is the latest version
-        targetSdk 33
+        minSdk min_sdk_version
+        targetSdk target_sdk_version
         versionCode 1
         versionName "1.0"
 
@@ -36,54 +36,40 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility java_version
+        targetCompatibility java_version
     }
-    kotlinOptions {
-        jvmTarget = '1.8'
+
+    kotlin {
+        jvmToolchain jvm_target_version
     }
+
     buildFeatures {
         compose true
         buildConfig true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion compose_version
-    }
+
     packagingOptions {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
+
     namespace 'nl.attendi.attendispeechserviceexample'
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.10.1'
-    implementation "androidx.compose.ui:ui:1.4.3"
-    implementation "androidx.compose.material3:material3:1.1.1"
-    implementation "androidx.compose.ui:ui-tooling-preview:1.4.3"
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'
-    implementation 'androidx.activity:activity-compose:1.7.2'
+    // Dependencies
     implementation project(path: ':attendispeechservice')
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.4.3"
-    // AndroidX Test - JVM testing
-    testImplementation "androidx.test.ext:junit-ktx:1.1.5"
-    testImplementation "androidx.test:core-ktx:1.5.0"
-    testImplementation "org.robolectric:robolectric:4.11.1"
-    testImplementation "androidx.activity:activity-ktx:1.8.2"
-    // Grant permissions during testing
-    androidTestImplementation 'androidx.test:rules:1.5.0'
 
+    // Compose
+    implementation platform("androidx.compose:compose-bom:$compose_bom_version")
+    implementation "androidx.compose.material3:material3"
+    implementation "androidx.compose.ui:ui-tooling-preview"
+    implementation "androidx.navigation:navigation-compose:$navigation_compose_version"
 
-    debugImplementation "androidx.compose.ui:ui-tooling:1.4.3"
-
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1'
-    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1"
-    implementation "androidx.lifecycle:lifecycle-runtime-compose:2.6.1"
-
+    // Essentials
+    implementation "androidx.core:core-ktx:$core_ktx_version"
 }
