@@ -5,6 +5,139 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0 - 2025-07-29]
+
+### Added
+- AudioRecorder and AudioRecorderImpl: Wrap the lower-level AudioRecord APIs to provide a convenient, suspendable interface for capturing audio from the device, ensuring coroutine support and streamlined usage.
+- AttendiRecorder and AttendiRecorderImpl: High-level recording interfaces that manage audio capture, plugin coordination, and lifecycle events without requiring direct UI interaction.
+- AsyncTranscribeService: Enables integration with real-time or streaming transcription services through a coroutine-friendly interface.
+- New plugin system for recorders: Introduced AttendiRecorderPlugin, decoupled from AttendiMicrophonePlugin, allowing more granular control over recording behavior.
+- New plugins:
+  * AttendiAsyncTranscribePlugin: Supports real-time transcription by integrating with AsyncTranscribeService.
+  * AttendiStopOnAudioFocusLossPlugin: Adds graceful handling of audio focus interruptions to prevent audio clashes with other apps (e.g., incoming call).
+
+### Changed
+- Refactored SDK architecture: Major reorganization to improve separation of concerns and encapsulation:
+  * Clear distinctions between AudioRecorder, AttendiRecorder, and AttendiMicrophone layers.
+  * Organized internal boundaries and modular package layout for improved maintainability.
+- AttendiTranscribePlugin now supports injecting a TranscribeService and AudioEncoder for improved extensibility, supporting alternative implementations beyond the default Attendi transcription service.
+- In-memory audio buffering: Audio recordings are now captured in memory instead of being written to disk, reducing I/O overhead and increasing performance for audio capture scenarios.
+
+### Improved
+- Configuration resilience: Recording is now preserved across configuration changes (e.g. screen rotation).
+- Dependency updates: Upgraded Gradle and library dependencies for better compatibility and stability.
+- Thread safety and lifecycle handling:
+  * Enhanced lifecycle-aware resource cleanup using proper coroutine scope management.
+  * Improved stability and reliability of audio operations in AudioRecorder and AttendiRecorder, preventing memory leaks and avoiding illegal state transitions.
+
+### Breaking Changes
+- Package structure refactoring:
+import nl.attendi.attendispeechservice.client.TranscribeAPIConfig  
+→ import nl.attendi.attendispeechservice.services.AttendiTranscribeAPIConfig
+
+import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone  
+→ import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophone
+
+import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophoneState  
+→ import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderState
+
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiErrorPlugin  
+→ import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiErrorPlugin
+
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiMicrophonePlugin  
+→ import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderPlugin
+
+import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiTranscribePlugin  
+→ import nl.attendi.attendispeechservice.components.attendirecorder.plugins.transcribeplugin.AttendiTranscribePlugin
+
+- Class renaming:
+MicrophoneUIState → AttendiRecorderState
+TranscribeAPIConfig → AttendiTranscribeAPIConfig
+
+- AttendiTranscribeAPIConfig updated fields:
+```kotlin
+// Old:
+val apiURL: String
+val modelType: ModelType
+
+// New:
+val apiBaseURL: String
+val modelType: String? = null
+````
+
+- AttendiMicrophone parameters moved into settings:
+```kotlin
+// Old:
+AttendiMicrophone(
+    size = 64.dp,
+    colors = AttendiMicrophoneDefaults.colors(
+        inactiveBackgroundColor = pinkColor,
+        inactiveForegroundColor = Color.White,
+        activeBackgroundColor = pinkColor,
+        activeForegroundColor = Color.White,
+    )
+)
+
+// New:
+AttendiMicrophone(
+    settings = AttendiMicrophoneSettings(
+        size = 64.dp,
+        colors = AttendiMicrophoneDefaults.colors(
+            inactiveBackgroundColor = pinkColor,
+            inactiveForegroundColor = Color.White,
+            activeBackgroundColor = pinkColor,
+            activeForegroundColor = Color.White,
+        )
+    )
+)
+```
+
+- Plugin system migration from AttendiMicrophone to AttendiRecorder:
+```kotlin
+// Old:
+AttendiMicrophone(
+    plugins = listOf(
+        AttendiErrorPlugin(),
+        AttendiTranscribePlugin(apiConfig = exampleAPIConfig),
+        object : AttendiMicrophonePlugin {
+            override fun activate(state: AttendiMicrophoneState) {
+                state.onUIState {
+                    // ...
+                }
+            }
+        }
+    ),
+    onResult = { transcribe: String -> 
+        // ...
+    }
+)
+
+// New:
+val recorder: AttendiRecorder = AttendiRecorderFactory.create(
+    plugins = listOf(
+        AttendiTranscribePlugin(
+            service = AttendiTranscribeServiceFactory.create(
+                apiConfig = ExampleAttendiTranscribeAPI.transcribeAPIConfig,
+            ),
+            onTranscribeCompleted = { transcribe: String?, error: Exception? ->
+                // ...
+            }
+        ),
+        AttendiErrorPlugin(context),
+        object : AttendiRecorderPlugin {
+            override suspend fun activate(model: AttendiRecorderModel) {
+                model.onStateUpdate {
+                    // ...
+                }
+            }
+        }
+    )
+)
+AttendiMicrophone(
+    recorder = recorder
+)
+```
+
 ## [0.2.3 - 2023-11-27]
 
 ### Fixed
@@ -78,7 +211,7 @@ AttendiMicrophone(
         // Anonymous objects allow us to create a plugin without having to create a new class,
         // thereby giving access to our view's state.
         object : AttendiMicrophonePlugin {
-            override fun activate(state: AttendiMicrophoneState) {
+            override suspend fun activate(state: AttendiMicrophoneState) {
                 state.onUIState {
                     microphoneUIState = it
                 }
