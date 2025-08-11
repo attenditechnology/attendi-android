@@ -11,14 +11,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,42 +32,29 @@ import androidx.compose.ui.unit.dp
 import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophone
 import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophoneDefaults
 import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophoneSettings
-import nl.attendi.attendispeechservice.components.attendimicrophone.plugins.AttendiVolumeFeedbackPlugin
-import nl.attendi.attendispeechservice.components.attendirecorder.plugins.transcribeplugin.AttendiTranscribePlugin
-import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorder
 import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderFactory
-import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderState
-import nl.attendi.attendispeechservice.services.transcribe.AttendiTranscribeServiceFactory
-import nl.attendi.attendispeechserviceexample.examples.plugins.ExampleErrorLoggerPlugin
-import nl.attendi.attendispeechserviceexample.examples.services.ExampleAttendiTranscribeAPI
+import nl.attendi.attendispeechserviceexample.ui.ErrorAlertDialog
 import nl.attendi.attendispeechserviceexample.ui.theme.AttendiSpeechServiceExampleTheme
+import nl.attendi.attendispeechserviceexample.ui.theme.Colors
+import nl.attendi.attendispeechserviceexample.ui.theme.Colors.pinkColor
 
 @Composable
-fun HoveringMicrophoneScreen() {
-    var text1 by rememberSaveable { mutableStateOf("") }
-    var text2 by rememberSaveable { mutableStateOf("") }
-    var text3 by rememberSaveable { mutableStateOf("") }
-    var text4 by rememberSaveable { mutableStateOf("") }
+fun SoapScreenView(
+    model: SoapScreenModel,
+    modifier: Modifier = Modifier
+) {
+    var isMissingPermissionsAlertPresented by remember { mutableStateOf(false) }
 
     val focusRequester1 = remember { FocusRequester() }
     val focusRequester2 = remember { FocusRequester() }
     val focusRequester3 = remember { FocusRequester() }
     val focusRequester4 = remember { FocusRequester() }
 
-    val microphoneUIState by remember { mutableStateOf<AttendiRecorderState?>(null) }
+    fun shouldDisplayMicrophoneTarget(tag: Int): Boolean {
+        return model.canDisplayFocusedTextField && model.focusedTextFieldIndex == tag
+    }
 
-    var focusedTextField by remember { mutableIntStateOf(0) }
-    val targetTextField = if (focusedTextField == 0) 1 else focusedTextField
-
-    fun shouldDisplayMicrophoneTarget(textField: Int) =
-        ((microphoneUIState == AttendiRecorderState.Recording || microphoneUIState == AttendiRecorderState.Processing) && targetTextField == textField)
-
-    fun displayMicrophoneTarget(textField: Int) =
-        Modifier.conditional(shouldDisplayMicrophoneTarget(textField)) {
-            border(1.dp, Color.Red)
-        }
-
-    Box {
+    Box(modifier = modifier) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
@@ -79,99 +67,128 @@ fun HoveringMicrophoneScreen() {
             Column {
                 Text("S:")
                 TextField(
-                    value = text1,
-                    onValueChange = { text1 = it },
+                    value = model.text1,
+                    onValueChange = { model.onTextChange(it) },
                     minLines = 5,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
                     modifier = Modifier
                         .focusRequester(focusRequester1)
-                        .onFocusChanged { if (it.isFocused) focusedTextField = 1 }
+                        .onFocusChanged {
+                            if (it.isFocused)
+                                model.onFocusedTextFieldIndexChange(0)
+                        }
                         .fillMaxWidth()
                         .height(100.dp)
                         .padding(0.dp)
-                        .then(displayMicrophoneTarget(1)))
-                if (shouldDisplayMicrophoneTarget(1)) Text("Aan het opnemen..", color = Color.Red)
+                        .border(
+                            width = 1.dp,
+                            color = if (shouldDisplayMicrophoneTarget(0)) pinkColor else Colors.greyColor,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                )
+                if (shouldDisplayMicrophoneTarget(0)) Text("Aan het opnemen..", color = pinkColor)
             }
 
             Column {
                 Text("O:")
                 TextField(
-                    value = text2,
-                    onValueChange = { text2 = it },
+                    value = model.text2,
+                    onValueChange = { model.onTextChange(it) },
                     minLines = 5,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
                     modifier = Modifier
                         .focusRequester(focusRequester2)
-                        .onFocusChanged { if (it.isFocused) focusedTextField = 2 }
+                        .onFocusChanged {
+                            if (it.isFocused)
+                                model.onFocusedTextFieldIndexChange(1)
+                        }
                         .fillMaxWidth()
                         .height(100.dp)
                         .padding(0.dp)
-                        .then(displayMicrophoneTarget(2)),
+                        .border(
+                            width = 1.dp,
+                            color = if (shouldDisplayMicrophoneTarget(1)) pinkColor else Colors.greyColor,
+                            shape = RoundedCornerShape(8.dp)
+                        )
                 )
-                if (shouldDisplayMicrophoneTarget(2)) Text("Aan het opnemen..", color = Color.Red)
             }
 
             Column {
                 Text("A:")
                 TextField(
-                    value = text3,
-                    onValueChange = { text3 = it },
+                    value = model.text3,
+                    onValueChange = { model.onTextChange(it) },
                     minLines = 5,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
                     modifier = Modifier
                         .focusRequester(focusRequester3)
-                        .onFocusChanged { if (it.isFocused) focusedTextField = 3 }
+                        .onFocusChanged {
+                            if (it.isFocused)
+                                model.onFocusedTextFieldIndexChange(2)
+                        }
                         .fillMaxWidth()
                         .height(100.dp)
                         .padding(0.dp)
-                        .then(displayMicrophoneTarget(3)),
+                        .border(
+                            width = 1.dp,
+                            color = if (shouldDisplayMicrophoneTarget(2)) pinkColor else Colors.greyColor,
+                            shape = RoundedCornerShape(8.dp)
+                        )
                 )
-                if (shouldDisplayMicrophoneTarget(3)) Text("Aan het opnemen..", color = Color.Red)
             }
 
             Column {
                 Text("P:")
                 TextField(
-                    value = text4,
-                    onValueChange = { text4 = it },
+                    value = model.text4,
+                    onValueChange = { model.onTextChange(it) },
                     minLines = 5,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
                     modifier = Modifier
                         .focusRequester(focusRequester4)
-                        .onFocusChanged { if (it.isFocused) focusedTextField = 4 }
+                        .onFocusChanged {
+                            if (it.isFocused)
+                                model.onFocusedTextFieldIndexChange(3)
+                        }
                         .fillMaxWidth()
                         .height(100.dp)
                         .padding(0.dp)
-                        .then(displayMicrophoneTarget(4)),
+                        .border(
+                            width = 1.dp,
+                            color = if (shouldDisplayMicrophoneTarget(3)) pinkColor else Colors.greyColor,
+                            shape = RoundedCornerShape(8.dp)
+                        )
                 )
-                if (shouldDisplayMicrophoneTarget(4)) Text("Aan het opnemen..", color = Color.Red)
             }
         }
-
-        val pinkColor = Color(240, 43, 131)
 
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
         ) {
-            val recorder: AttendiRecorder = AttendiRecorderFactory.create(
-                plugins = listOf(
-                    AttendiTranscribePlugin(
-                        service = AttendiTranscribeServiceFactory.create(
-                            apiConfig = ExampleAttendiTranscribeAPI.transcribeAPIConfig,
-                        ),
-                        onTranscribeCompleted = { transcribe, _ ->
-                            when (focusedTextField) {
-                                1 -> text1 = transcribe ?: ""
-                                2 -> text2 = transcribe ?: ""
-                                3 -> text3 = transcribe ?: ""
-                                4 -> text4 = transcribe ?: ""
-                                else -> {}
-                            }
-                        }
-                    ),
-                    ExampleErrorLoggerPlugin()
-                )
-            )
-
             AttendiMicrophone(
+                recorder = model.recorder,
                 modifier = Modifier
                     .border(1.dp, pinkColor, RoundedCornerShape(percent = 50)),
                 settings = AttendiMicrophoneSettings(
@@ -181,25 +198,44 @@ fun HoveringMicrophoneScreen() {
                         inactiveForegroundColor = Color.White,
                         activeBackgroundColor = pinkColor,
                         activeForegroundColor = Color.White,
-                    )
+                    ),
+                    showsDefaultPermissionsDeniedDialog = false
                 ),
-                recorder = recorder,
-                plugins = listOf(
-                    AttendiVolumeFeedbackPlugin()
-                )
+                onRecordingPermissionDenied = {
+                    isMissingPermissionsAlertPresented = true
+                }
             )
         }
-    }
-}
 
-/**
- * A modifier that applies [modifier] if [condition] is true.
- */
-private fun Modifier.conditional(condition: Boolean, modifier: Modifier.() -> Modifier): Modifier {
-    return if (condition) {
-        then(modifier(Modifier))
-    } else {
-        this
+        if (isMissingPermissionsAlertPresented) {
+            AlertDialog(
+                onDismissRequest = {
+                    isMissingPermissionsAlertPresented = false
+                },
+                title = {
+                    Text(text = "Missing Permissions")
+                },
+                text = {
+                    Text(text = "Recording Permissions have to be granted in order to use the microphone")
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        isMissingPermissionsAlertPresented = false
+                    }) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
+
+        if (model.isErrorAlertShown) {
+            ErrorAlertDialog(
+                errorMessage = model.errorMessage,
+                onDismissRequest = {
+                    model.onAlertDialogDismiss()
+                }
+            )
+        }
     }
 }
 
@@ -207,6 +243,6 @@ private fun Modifier.conditional(condition: Boolean, modifier: Modifier.() -> Mo
 @Composable
 fun HoveringMicrophoneScreenPreview() {
     AttendiSpeechServiceExampleTheme {
-        HoveringMicrophoneScreen()
+        SoapScreenView(model = SoapScreenModel(recorder = AttendiRecorderFactory.create()))
     }
 }
