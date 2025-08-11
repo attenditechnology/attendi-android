@@ -23,7 +23,7 @@ interface AudioRecorder {
      * This method must only be called when recording is not already in progress. If called again
      * while recording, it will throw [AudioRecorderException.AlreadyRecording] to prevent concurrent usage.
      *
-     * This method must only be called with valid AudioRecordingConfig. If invalid,
+     * This method must only be called with a valid AudioRecordingConfig. If invalid,
      * it will throw [AudioRecorderException.UnsupportedAudioFormat] to prevent starting the recorder.
      *
      * Recording is performed on a background coroutine and audio frames are delivered asynchronously.
@@ -48,6 +48,7 @@ sealed class AudioRecorderException(message: String) : Exception(message) {
         // Serializable object must implement 'readResolve'. This is because when serializing/deserializing
         // the system doesn't understand that this class is meant to be a singleton and thus it needs
         // to implement readResolve to return always the same instance.
+        @Suppress("unused")
         private fun readResolve(): Any = AlreadyRecording
     }
     data class UnsupportedAudioFormat(override val message: String) : AudioRecorderException(message)

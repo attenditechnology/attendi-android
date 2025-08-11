@@ -65,20 +65,20 @@ internal object UndoableTranscribeAsyncActionMapper {
 
     private fun createUndoableRemoveAnnotation(
         action: TranscribeAsyncAction.RemoveAnnotation,
-        annotations: List<TranscribeAsyncAction>
+        annotations: List<TranscribeAsyncAction.AddAnnotation>
     ): UndoableTranscribeAction {
         val removed =
-            annotations.find { (it as? TranscribeAsyncAction.AddAnnotation)?.parameters?.id == action.parameters.id }
+            annotations.find { it.parameters.id == action.parameters.id }
                 ?: throw IllegalStateException("Annotation to remove not found for action: $action in $annotations")
         return UndoableTranscribeAction(action, listOf(removed))
     }
 
     private fun createUndoableUpdateAnnotation(
         action: TranscribeAsyncAction.UpdateAnnotation,
-        annotations: List<TranscribeAsyncAction>
+        annotations: List<TranscribeAsyncAction.AddAnnotation>
     ): UndoableTranscribeAction {
         val updated =
-            annotations.find { (it as? TranscribeAsyncAction.AddAnnotation)?.parameters?.id == action.parameters.id }
+            annotations.find { it.parameters.id == action.parameters.id }
                 ?: throw IllegalStateException("Annotation to update not found for action: $action in $annotations")
         val removedAnnotation =
             TranscribeAsyncAction.RemoveAnnotation(

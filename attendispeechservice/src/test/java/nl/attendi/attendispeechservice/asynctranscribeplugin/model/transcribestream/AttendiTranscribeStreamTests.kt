@@ -18,13 +18,13 @@ class AttendiTranscribeStreamTests {
             annotations = emptyList()
         )
         val actions = emptyList<TranscribeAsyncAction>()
-        val sut = AttendiTranscribeStream(
+        var sut = AttendiTranscribeStream(
             state = attendiStreamState,
             operationHistory = emptyList(),
             undoneOperations = emptyList()
         )
 
-        sut.receiveActions(actions)
+        sut = sut.receiveActions(actions)
 
         Assert.assertEquals("Attendi", sut.state.text)
         Assert.assertEquals(0, sut.state.annotations.size)

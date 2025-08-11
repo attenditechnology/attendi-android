@@ -86,6 +86,7 @@ sealed class AsyncTranscribeServiceError(message: String?) : Exception(message) 
         // Serializable object must implement 'readResolve'. This is because when serializing/deserializing
         // the system doesn't understand that this class is meant to be a singleton and thus it needs
         // to implement readResolve to return always the same instance.
+        @Suppress("unused")
         private fun readResolve(): Any = ConnectTimeout
     }
 
@@ -94,6 +95,7 @@ sealed class AsyncTranscribeServiceError(message: String?) : Exception(message) 
         // Serializable object must implement 'readResolve'. This is because when serializing/deserializing
         // the system doesn't understand that this class is meant to be a singleton and thus it needs
         // to implement readResolve to return always the same instance.
+        @Suppress("unused")
         private fun readResolve(): Any = DisconnectTimeout
     }
 

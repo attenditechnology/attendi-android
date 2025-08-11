@@ -22,7 +22,7 @@ import nl.attendi.attendispeechservice.services.asynctranscribe.dto.response.Tra
  */
 internal object AttendiAsyncTranscribeMessageDecoder : AsyncTranscribeMessageDecoder {
 
-    // A lenient JSON parser that safely ignores unknown fields in the payload
+    // A lenient JSON parser that safely ignores unknown fields in the payload.
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
