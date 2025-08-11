@@ -27,10 +27,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import nl.attendi.attendispeechserviceexample.examples.screens.nonstreamingscreen.TwoMicrophonesNonStreamingScreenView
-import nl.attendi.attendispeechserviceexample.examples.screens.recorderscreen.RecorderStreamingScreenView
-import nl.attendi.attendispeechserviceexample.examples.screens.soapscreen.HoveringMicrophoneScreen
-import nl.attendi.attendispeechserviceexample.examples.screens.streamingscreen.TwoMicrophonesScreenStreamingScreen
+import nl.attendi.attendispeechserviceexample.examples.screens.onemicrophonesyncscreen.OneMicrophoneSyncScreen
+import nl.attendi.attendispeechserviceexample.examples.screens.recorderscreen.RecorderStreamingScreen
+import nl.attendi.attendispeechserviceexample.examples.screens.soapscreen.SoapScreen
+import nl.attendi.attendispeechserviceexample.examples.screens.twomicrophonesstreamingscreen.TwoMicrophonesScreenStreamingScreen
 import nl.attendi.attendispeechserviceexample.ui.theme.AttendiSpeechServiceExampleTheme
 
 class MainActivity : ComponentActivity() {
@@ -49,10 +49,10 @@ class MainActivity : ComponentActivity() {
 }
 
 private object InternalRoute {
-    const val MAIN_ROUTE = "MainRoute"
+    const val MAIN_ROUTE = "ExampleApp"
 
-    const val STREAMING = MAIN_ROUTE + "Streaming"
-    const val NON_STREAMING = MAIN_ROUTE + "NonStreaming"
+    const val TWO_MICROPHONES_STREAMING = MAIN_ROUTE + "Streaming"
+    const val ONE_MICROPHONE_SYNC = MAIN_ROUTE + "OneMicrophoneSync"
     const val SOAP = MAIN_ROUTE + "SOAP"
     const val RECORDER = MAIN_ROUTE + "Recorder"
 }
@@ -60,7 +60,7 @@ private object InternalRoute {
 @Composable
 fun ExampleApp() {
     val rootNavController: NavHostController = rememberNavController()
-    var currentScreen by rememberSaveable { mutableStateOf(InternalRoute.STREAMING) }
+    var currentScreen by rememberSaveable { mutableStateOf(InternalRoute.TWO_MICROPHONES_STREAMING) }
 
     Column(
         modifier = Modifier
@@ -72,27 +72,27 @@ fun ExampleApp() {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            if (currentScreen != InternalRoute.NON_STREAMING) {
+            if (currentScreen != InternalRoute.TWO_MICROPHONES_STREAMING) {
                 Button(onClick = {
-                    currentScreen = InternalRoute.NON_STREAMING
-                    rootNavController.apply {
-                        popBackStack()
-                        navigate(currentScreen)
-                    }
-                }) {
-                    Text("Transcribe")
-                }
-            }
-
-            if (currentScreen != InternalRoute.STREAMING) {
-                Button(onClick = {
-                    currentScreen = InternalRoute.STREAMING
+                    currentScreen = InternalRoute.TWO_MICROPHONES_STREAMING
                     rootNavController.apply {
                         popBackStack()
                         navigate(currentScreen)
                     }
                 }, modifier = Modifier.width(IntrinsicSize.Min)) {
                     Text("Stream")
+                }
+            }
+
+            if (currentScreen != InternalRoute.ONE_MICROPHONE_SYNC) {
+                Button(onClick = {
+                    currentScreen = InternalRoute.ONE_MICROPHONE_SYNC
+                    rootNavController.apply {
+                        popBackStack()
+                        navigate(currentScreen)
+                    }
+                }) {
+                    Text("Sync")
                 }
             }
 
@@ -123,20 +123,20 @@ fun ExampleApp() {
 
         NavHost(
             navController = rootNavController,
-            startDestination = InternalRoute.STREAMING,
+            startDestination = InternalRoute.TWO_MICROPHONES_STREAMING,
             route = InternalRoute.MAIN_ROUTE
         ) {
-            composable(route = InternalRoute.STREAMING) {
+            composable(route = InternalRoute.TWO_MICROPHONES_STREAMING) {
                 TwoMicrophonesScreenStreamingScreen()
             }
-            composable(route = InternalRoute.NON_STREAMING) {
-                TwoMicrophonesNonStreamingScreenView()
+            composable(route = InternalRoute.ONE_MICROPHONE_SYNC) {
+                OneMicrophoneSyncScreen()
             }
             composable(route = InternalRoute.SOAP) {
-                HoveringMicrophoneScreen()
+                SoapScreen()
             }
             composable(route = InternalRoute.RECORDER) {
-                RecorderStreamingScreenView()
+                RecorderStreamingScreen()
             }
         }
     }

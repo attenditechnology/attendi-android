@@ -1,4 +1,4 @@
-package nl.attendi.attendispeechserviceexample.examples.screens.streamingscreen
+package nl.attendi.attendispeechserviceexample.examples.screens.recorderscreen
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -15,29 +15,29 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TwoMicrophonesScreenStreamingScreen(
+fun RecorderStreamingScreen(
     modifier: Modifier = Modifier
 ) {
     val applicationContext = LocalContext.current.applicationContext
-    val viewModel: TwoMicrophonesStreamingScreenViewModel = viewModel(
+    val viewModel: RecorderStreamingScreenViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return TwoMicrophonesStreamingScreenViewModel(
+                return RecorderStreamingScreenViewModel(
                     applicationContext = applicationContext
                 ) as T
             }
         }
     )
-    val model: TwoMicrophonesStreamingScreenModel by viewModel.model.collectAsState()
+    val model: RecorderStreamingScreenModel by viewModel.model.collectAsState()
 
     Column {
         CenterAlignedTopAppBar(
             title = {
-                Text("Streaming")
+                Text("Recorder")
             }
         )
-        TwoMicrophonesScreenStreamingView(
+        RecorderStreamingScreenView(
             model = model,
             modifier = modifier
         )
