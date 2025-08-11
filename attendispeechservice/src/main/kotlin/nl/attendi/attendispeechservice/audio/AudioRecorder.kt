@@ -51,5 +51,12 @@ sealed class AudioRecorderException(message: String) : Exception(message) {
         @Suppress("unused")
         private fun readResolve(): Any = AlreadyRecording
     }
+    data object DeniedRecodingPermission : AudioRecorderException("Permission to access the device's microphone is denied") {
+        // Serializable object must implement 'readResolve'. This is because when serializing/deserializing
+        // the system doesn't understand that this class is meant to be a singleton and thus it needs
+        // to implement readResolve to return always the same instance.
+        @Suppress("unused")
+        private fun readResolve(): Any = AlreadyRecording
+    }
     data class UnsupportedAudioFormat(override val message: String) : AudioRecorderException(message)
 }

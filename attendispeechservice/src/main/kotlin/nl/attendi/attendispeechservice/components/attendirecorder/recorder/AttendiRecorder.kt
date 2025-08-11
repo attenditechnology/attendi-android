@@ -46,6 +46,22 @@ interface AttendiRecorder {
     fun hasRecordAudioPermissionGranted(context: Context): Boolean
 
     /**
+     * Sets the plugins for the [AttendiRecorder].
+     *
+     * This method should be called *after* the recorder is created rather than
+     * during its initialization. The reason is not related to memory leaks,
+     * but to avoid cases where certain plugins may hold a reference to the
+     * recorder instance during their construction. Such a reference could
+     * interfere with creating the recorder directly alongside those plugins.
+     *
+     * Calling this method will deactivate all previously set plugins and
+     * activate the new ones provided.
+     *
+     * @Param plugins A list of [AttendiRecorderPlugin] instances to attach to the recorder.
+     */
+    suspend fun setPlugins(plugins: List<AttendiRecorderPlugin>)
+
+    /**
      * Starts recording.
      */
     suspend fun start()

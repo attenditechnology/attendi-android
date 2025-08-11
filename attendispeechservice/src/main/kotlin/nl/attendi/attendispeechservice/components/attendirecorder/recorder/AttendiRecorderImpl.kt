@@ -41,7 +41,7 @@ import kotlin.coroutines.cancellation.CancellationException
 internal class AttendiRecorderImpl(
     private val audioRecordingConfig: AudioRecordingConfig = AudioRecordingConfig(),
     private val recorder: AudioRecorder = AudioRecorderImpl,
-    private val plugins: List<AttendiRecorderPlugin> = emptyList()
+    private var plugins: List<AttendiRecorderPlugin> = emptyList()
 ) : AttendiRecorder {
 
     override var model: AttendiRecorderModel = AttendiRecorderModel()
@@ -121,11 +121,19 @@ internal class AttendiRecorderImpl(
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    override suspend fun setPlugins(plugins: List<AttendiRecorderPlugin>) {
+        this.plugins.forEach { it.deactivate(model) }
+
+        plugins.forEach { it.activate(model) }
+
+        this.plugins = plugins
+    }
+
     override suspend fun start() = start(0)
 
     override suspend fun start(delayMilliseconds: Long) = handleErrors {
         startStopMutex.withLock {
-            if (hasStarted) {
+            if (hasStarted || isReleased) {
                 return@handleErrors
             }
             hasStarted = true
@@ -143,11 +151,10 @@ internal class AttendiRecorderImpl(
                             model.callbacks.onAudio.invokeAll(audioFrame)
                         }
                     )
+                    model.updateState(AttendiRecorderState.Recording)
+                    model.callbacks.onStartRecording.invokeAll()
                 }
             }
-
-            model.updateState(AttendiRecorderState.Recording)
-            model.callbacks.onStartRecording.invokeAll()
         }
     }
 
@@ -155,7 +162,7 @@ internal class AttendiRecorderImpl(
 
     override suspend fun stop(delayMilliseconds: Long) = handleErrors {
         startStopMutex.withLock {
-            if (!hasStarted) {
+            if (!hasStarted || isReleased) {
                 return@handleErrors
             }
             hasStarted = false
