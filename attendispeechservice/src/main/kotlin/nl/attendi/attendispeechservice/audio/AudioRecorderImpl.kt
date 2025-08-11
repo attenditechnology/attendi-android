@@ -4,10 +4,15 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.coroutines.coroutineContext
 
 /**
  * Default implementation of [AudioRecorder] that handles low-level audio recording operations.
@@ -29,7 +34,7 @@ internal object AudioRecorderImpl : AudioRecorder {
      * and not block the main thread. We also use a Job to keep track of the coroutine, so we can
      * cancel it when the user stops recording.
      */
-    private val recorderMutex = Mutex()
+    private val startStopMutex = Mutex()
 
     /**
      * Used to read data from the microphone / AudioRecord instance. Only holds one read worth of data.
@@ -43,11 +48,20 @@ internal object AudioRecorderImpl : AudioRecorder {
 
     private var isRecordingInternal: Boolean = false
 
+    // Channel to queue audio frames and process them in a serialized way.
+    private var audioFrameChannel: Channel<AudioFrame>? = null
+
+    // Job for processing queued frames.
+    private var audioProcessingJob: Job? = null
+
+    // Job for reading audio frames.
+    private var audioReadingJob: Job? = null
+
     override suspend fun startRecording(
         audioRecordingConfig: AudioRecordingConfig,
         onAudio: suspend (AudioFrame) -> Unit
     ) {
-        recorderMutex.withLock {
+        startStopMutex.withLock {
             if (isRecordingInternal) {
                 throw AudioRecorderException.AlreadyRecording
             }
@@ -80,34 +94,48 @@ internal object AudioRecorderImpl : AudioRecorder {
                     audioRecordingConfig.channel,
                     audioRecordingConfig.encoding,
                     bufferSize
-                ).apply {
-                    startRecording()
-                }
+                )
+                audioRecord?.startRecording()
             } catch (e: IllegalArgumentException) {
-                throw AudioRecorderException.UnsupportedAudioFormat(e.message ?: "Invalid Audio Format")
+                throw AudioRecorderException.UnsupportedAudioFormat(
+                    e.message ?: "Invalid Audio Format"
+                )
+            } catch (_: IllegalStateException) {
+                throw AudioRecorderException.DeniedRecodingPermission
+            }
+
+            // Create channel for audio frames.
+            audioFrameChannel = Channel(Channel.UNLIMITED)
+
+            // Start processing coroutine sequentially.
+            audioProcessingJob = CoroutineScope(Dispatchers.Default).launch {
+                if (audioFrameChannel != null) {
+                    for (frame in audioFrameChannel) {
+                        onAudio(frame)
+                    }
+                }
+            }
+
+            // Launch reading coroutine (reads from mic, pushes to channel).
+            audioReadingJob = CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    while (isActive) {
+                        val readSize =
+                            audioRecord?.read(temporaryAudioBuffer, 0, temporaryAudioBuffer.size)
+                                ?: 0
+                        if (readSize <= 0) {
+                            continue
+                        }
+                        val samples = temporaryAudioBuffer.toList().take(readSize)
+                        val audioFrame = AudioFrame(samples)
+                        audioFrameChannel?.trySend(audioFrame)
+                    }
+                } finally {
+                    stopRecording()
+                }
             }
 
             isRecordingInternal = true
-        }
-
-        try {
-            while (true) {
-                /**
-                 * Ensures that job in the current context is active.
-                 * If the job is no longer active, throws CancellationException and breaks the while loop.
-                 */
-                coroutineContext.ensureActive()
-                val readSize =
-                    audioRecord?.read(temporaryAudioBuffer, 0, temporaryAudioBuffer.size) ?: 0
-                if (readSize <= 0) {
-                    continue
-                }
-                val samples = temporaryAudioBuffer.toList().take(readSize)
-                val audioFrame = AudioFrame(samples)
-                onAudio(audioFrame)
-            }
-        } finally {
-            stopRecording()
         }
     }
 
@@ -126,13 +154,28 @@ internal object AudioRecorderImpl : AudioRecorder {
     }
 
     override suspend fun stopRecording() {
-        if (!isRecordingInternal) {
-            return
-        }
-        isRecordingInternal = false
+        startStopMutex.withLock {
+            if (!isRecordingInternal) {
+                return
+            }
+            isRecordingInternal = false
 
-        audioRecord?.stop()
-        audioRecord?.release()
-        audioRecord = null
+            // Stop the read loop.
+            audioReadingJob?.cancelAndJoin()
+            audioReadingJob = null
+
+            // Close the frame channel so processing finishes.
+            audioFrameChannel?.close()
+
+            // Wait for processing to complete.
+            audioProcessingJob?.join()
+            audioProcessingJob = null
+            audioFrameChannel = null
+
+            // Release the AudioRecord.
+            audioRecord?.stop()
+            audioRecord?.release()
+            audioRecord = null
+        }
     }
 }
