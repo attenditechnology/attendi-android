@@ -24,9 +24,12 @@ import kotlin.coroutines.suspendCoroutine
  */
 class AttendiAudioNotificationPlugin(
     private val context: Context,
-    @param:RawRes private val startNotificationSoundId: Int = R.raw.start_notification,
-    @param:RawRes private val stopNotificationSoundId: Int = R.raw.stop_notification
+    @RawRes startNotificationSoundId: Int? = null,
+    @RawRes stopNotificationSoundId: Int? = null
 ) : AttendiRecorderPlugin {
+
+    private val startNotificationSoundId: Int = startNotificationSoundId ?: R.raw.start_notification
+    private val stopNotificationSoundId: Int = stopNotificationSoundId ?: R.raw.stop_notification
 
     private companion object {
         private const val START_NOTIFICATION_TIMEOUT_MILLISECONDS: Long = 2000

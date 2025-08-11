@@ -28,8 +28,10 @@ import nl.attendi.attendispeechservice.utils.Vibrator
  */
 class AttendiErrorPlugin(
     private val context: Context,
-    @param:RawRes private val errorNotificationSoundId: Int = R.raw.error_notification
+    @RawRes errorNotificationSoundId: Int? = null
 ) : AttendiRecorderPlugin {
+
+    private val errorNotificationSoundId: Int = errorNotificationSoundId ?: R.raw.error_notification
 
     private var errorNotificationSound: MediaPlayer? = null
 

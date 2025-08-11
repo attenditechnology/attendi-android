@@ -1,64 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- General UI Elements -->
-    <string name="cancel_body">U staat op het punt de rapportage te annuleren. Doorgaan?</string>
-    <string name="yes">Ja</string>
-    <string name="no">Nee</string>
-    <string name="checkmark">Checkmark</string>
-    <string name="close">Close</string>
-    <string name="microphone_contentDescription">Microphone</string>
-    <string name="ok">Ok</string>
-    <string name="accept">Accepteren</string>
-    <string name="cancel">Annuleren</string>
+    <!-- Use camelCase (e.g., noMicrophone) instead of snake_case (no_microphone) to match iOS resource naming conventions.
+         On iOS, snake_case would be converted to dot notation (no.microphone), which could lead resource code generators
+         like SwiftGen to create unintended objects (e.g., No.Microphone).
+    -->
 
-    <!-- SOEP Method -->
-    <string name="soep_title">SOEP</string>
-    <string name="soep_display_name">SOEP</string>
-    <string name="soep_description">Gebruik deze methode om meer structuur aan te brengen in een rapportage. Dit is vooral nuttig bij een veranderende zorgsituatie.</string>
-
-    <!-- Subjective Component -->
-    <string name="subjective_symbol">S</string>
-    <string name="subjective_title">Subjectief</string>
-    <string name="subjective_prompt">Informatie afkomstig van de cliënt zelf</string>
-
-    <!-- Objective Component -->
-    <string name="objective_symbol">O</string>
-    <string name="objective_title">Objectief</string>
-    <string name="objective_prompt">Wat zijn jouw observaties van de situatie?</string>
-
-    <!-- Evaluation Component -->
-    <string name="evaluation_symbol">E</string>
-    <string name="evaluation_title">Evaluatie</string>
-    <string name="evaluation_prompt">Wat concludeer je uit de informatie die je hebt?</string>
-
-    <!-- Plan Component -->
-    <string name="plan_symbol">P</string>
-    <string name="plan_title">Plan</string>
-    <string name="plan_prompt">Wat zijn de vervolgstappen die je gaat nemen?</string>
-
-    <!-- SOAP Method -->
-    <string name="soap_title">SOAP</string>
-    <string name="soap_display_name">SOAP</string>
-    <string name="soap_description">Gebruik deze methode om meer structuur aan te brengen in een rapportage. Dit is vooral nuttig bij een veranderende zorgsituatie</string>
-
-    <!-- Analysis Component -->
-    <string name="analysis_symbol">A</string>
-    <string name="analysis_title">Analyse</string>
-    <string name="analysis_prompt">Wat concludeer je uit de informatie die je hebt?</string>
-
-    <!-- Report Method -->
-    <string name="reporting_method_title">Rapportagemethodes</string>
-    <string name="reporting_method_content_description">Rapportagemethodes</string>
-
-    <!-- Writing Assistant -->
-    <string name="writing_assistant_group_title">Schrijfhulp</string>
-    <string name="writing_assistant_item_title">Schrijf mijn rapportage</string>
-    <string name="writing_assistant_item_subtitle">Vertel wat moet worden verwerkt tot rapportage</string>
-    <string name="error_title">Foutmelding</string>
-    <string name="error_body">Er is iets misgegaan: %1$s</string>
+    <!-- Microphone -->
+    <string name="microphone_notRecording_title">Microfoon inactief</string>
+    <string name="microphone_loading_title">Microfoon laden</string>
+    <string name="microphone_recording_title">Microfoon opnemen</string>
+    <string name="microphone_processing_title">Microfoon verwerken</string>
 
     <!-- Microphone permission denied dialog -->
-    <string name="no_microphone_permission_dialog_title">Geen toegang tot de microfoon</string>
-    <string name="no_microphone_permission_dialog_body">Zonder toegang tot uw microfoon kan geen geluid opgenomen worden. Geef de app toegang tot uw microfoon in uw telefooninstellingen.</string>
-    <string name="no_microphone_permission_dialog_go_to_settings">Ga naar instellingen</string>
+    <string name="noMicrophone_permission_dialog_title">Geen toegang tot de microfoon</string>
+    <string name="noMicrophone_permission_dialog_body">Zonder toegang tot uw microfoon kan geen geluid opgenomen worden. Geef de app toegang tot uw microfoon in uw telefooninstellingen.</string>
+    <string name="noMicrophone_permission_dialog_goToSettings_button">Ga naar instellingen</string>
+    <string name="noMicrophone_permission_dialog_cancel_button">Annuleren</string>
 </resources>
