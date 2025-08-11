@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2 - 2025-08-12]
+### Changed
+- Renamed `AttendiMicrophone` API methods
+  * `onMicrophoneTapCallback` -> `onMicrophoneTap`
+  * `onRecordingPermissionDeniedCallback` -> `onRecordingPermissionDenied`
+
+### Breaking Changes
+```kotlin
+// Old:
+AttendiMicrophone(
+    recorder = recorderInstance,
+    settings = AttendiMicrophoneSettings(
+        size = 64.dp,
+        colors = AttendiMicrophoneDefaults.colors(baseColor = Colors.Red),
+        isVolumeFeedbackEnabled = false
+    ),
+    onMicrophoneTapCallback = {
+        print("Microphone tapped")
+    },
+    onRecordingPermissionDeniedCallback = {
+        print("Microphone access denied")
+    }
+)
+```
+
+```kotlin
+// New:
+AttendiMicrophone(
+    recorder = recorderInstance,
+    settings = AttendiMicrophoneSettings(
+        size = 64.dp,
+        colors = AttendiMicrophoneDefaults.colors(baseColor = Colors.Red),
+        isVolumeFeedbackEnabled = false
+    ),
+    onMicrophoneTap = {
+        print("Microphone tapped")
+    },
+    onRecordingPermissionDenied = {
+        print("Microphone access denied")
+    }
+)
+```
+
+## [0.3.1 - 2025-08-11]
+### Changed
+- Replaced the permissionsDeniedPermanentlyView setting in AttendiMicrophoneSettings with a new flag, showsDefaultPermissionsDeniedDialog, to control whether the default Attendi error dialog appears when recording permissions are denied.
+- To customize the error view, combine showsDefaultPermissionsDeniedDialog with the onRecordingPermissionDeniedCallback callback from AttendiMicrophone.
+
+### Improved
+- Enhanced error handling across AudioRecorder, AttendiRecorder, and BaseAsyncTranscribeService.
+- Updated SDK example to cover and validate all core functionalities, including audio recording, live transcription, plugin integration, and error handling.
+- Added UserAgentProvider in AttendiTranscribeService to set a default user agent if none is specified.
+
+### Removed
+- Removed unused assets and string resources.
+- Deprecated AttendiMicrophonePlugin and integrated microphone-specific plugins directly into AttendiMicrophone to simplify usage and reduce complexity.
+
 ## [0.3.0 - 2025-07-29]
 
 ### Added
@@ -63,7 +120,7 @@ val modelType: ModelType
 // New:
 val apiBaseURL: String
 val modelType: String? = null
-````
+```
 
 - AttendiMicrophone parameters moved into settings:
 ```kotlin
