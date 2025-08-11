@@ -63,6 +63,8 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
     private var socket: WebSocket? = null
     private var listener: AsyncTranscribeServiceListener? = null
     private val webSocketClient = OkHttpClient()
+    private var isConnected = false
+    private var isDisconnecting = false
 
     /**
      * Creates the WebSocket [Request] object used to initiate the connection.
@@ -175,7 +177,7 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
 
         try {
             connectSocket(request)
-        } catch (e: TimeoutCancellationException) {
+        } catch (_: TimeoutCancellationException) {
             listener.onError(AsyncTranscribeServiceError.ConnectTimeout)
         } catch (e: Exception) {
             if (retryCount == 0) {
@@ -200,6 +202,7 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
                         getOpenMessage()?.let { configMessage ->
                             webSocket.send(configMessage)
                         }
+                        isConnected = true
                         listener?.onOpen()
                         continuation.resume(Unit)
                     }
@@ -209,21 +212,19 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
                     }
 
                     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                        handleSocketClosed()
-                        if (code == WEBSOCKET_NORMAL_CLOSURE_CODE) {
-                            listener?.onClose()
-                        } else {
+                        if (code != WEBSOCKET_NORMAL_CLOSURE_CODE) {
                             listener?.onError(
                                 AsyncTranscribeServiceError.ClosedAbnormally(reason)
                             )
                         }
+                        handleSocketClosed()
                     }
 
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                        handleSocketClosed()
                         listener?.onError(
                             AsyncTranscribeServiceError.Unknown(message = response?.message)
                         )
+                        handleSocketClosed()
                         if (continuation.isActive) continuation.resumeWithException(t)
                     }
                 })
@@ -232,8 +233,11 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
     }
 
     private fun handleSocketClosed() {
+        listener?.onClose()
         socket = null
         listener = null
+        isConnected = false
+        isDisconnecting = false
     }
 
     /**
@@ -244,21 +248,27 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
      * the connection is forcibly terminated.
      */
     override suspend fun disconnect() {
-        getCloseMessage()?.let { closeMessage ->
-            socket?.send(closeMessage)
-
-            val socketClosedByServer = waitForServerToCloseSocket()
-            if (!socketClosedByServer) {
-                socket?.close(
-                    WEBSOCKET_TIMEOUT_CLOSURE_CODE,
-                    "Timeout reached after end of audio stream message sent"
-                )
-                socket = null
-                listener?.onError(AsyncTranscribeServiceError.DisconnectTimeout)
+        connectMutex.withLock {
+            if (!isConnected || isDisconnecting) {
+                return
             }
-        } ?: run {
-            socket?.close(getCloseCode(), null)
-            socket = null
+            isDisconnecting = true
+
+            getCloseMessage()?.let { closeMessage ->
+                socket?.send(closeMessage)
+
+                val socketClosedByServer = waitForServerToCloseSocket()
+                if (!socketClosedByServer) {
+                    socket?.close(
+                        WEBSOCKET_TIMEOUT_CLOSURE_CODE,
+                        "Timeout reached after end of audio stream message sent"
+                    )
+                    listener?.onError(AsyncTranscribeServiceError.DisconnectTimeout)
+                }
+            } ?: run {
+                socket?.close(getCloseCode(), null)
+            }
+            handleSocketClosed()
         }
     }
 
@@ -267,8 +277,8 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
             while (socket != null) {
                 delay(SERVER_CLOSE_SOCKET_INTERVAL_CHECK_MILLISECONDS)
             }
-            true // Socket was closed by server within timeout
-        } ?: false // Timeout reached
+            true // Socket was closed by server within timeout.
+        } ?: false // Timeout reached.
     }
 
     /**
