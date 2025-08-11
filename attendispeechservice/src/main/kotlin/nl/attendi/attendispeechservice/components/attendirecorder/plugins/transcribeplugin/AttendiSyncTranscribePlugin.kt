@@ -8,23 +8,37 @@ import nl.attendi.attendispeechservice.services.transcribe.TranscribeService
 import nl.attendi.attendispeechservice.utils.invokeAll
 
 /**
- * A plugin that sends recorded audio to Attendi's backend transcription API for speech-to-text processing.
+ * A plugin that sends recorded audio to a backend transcription API for speech-to-text processing.
  *
- * This plugin registers and activates an audio task named `"attendi-transcribe"`, which handles the audio
- * streaming and transcription. Once the recording session is complete, the plugin listens for a response
- * from the backend and provides the transcription result (or an error, if any) to the client.
+ * [AttendiSyncTranscribePlugin] captures raw audio frames during a recording session, encodes them,
+ * and sends the encoded audio to a transcription service once recording stops. It is designed for use
+ * with synchronous (blocking) transcription services where the entire audio must be captured
+ * before transcription can begin.
  *
- * Use this plugin when you want to automatically transcribe user speech using Attendi's transcription service.
+ * Use this plugin when you want to automatically transcribe user speech after they finish speaking,
+ * such as in short-form interactions (e.g. form inputs, commands, or voice notes).
  *
- * @param service A service implementation that communicates with a transcription API such as Attendi's transcription endpoint.
+ * Hooks into the [AttendiRecorderModel] lifecycle:
+ * - Clears audio buffer before recording starts.
+ * - Collects audio frames while recording.
+ * - Triggers transcription upon stopping.
+ *
+ * Notifies the caller using the provided callbacks:
+ * - [onStartRecording] — called when recording begins.
+ * - [onTranscribeStarted] — called when transcription starts (after recording ends).
+ * - [onTranscribeCompleted] — called with the resulting transcript or an error upon completion.
+ *
+ * Note: This plugin stores audio frames in memory for the duration of a recording session.
+ * It is best suited for short to moderate-length recordings.
+ *
+ * @param service A service implementation that communicates with a transcription backend.
  * @param audioEncoder Responsible for encoding raw PCM audio into the format required by the API.
  * @param onStartRecording Callback invoked when the recording task is started.
  * @param onTranscribeStarted Callback invoked when the transcription task is started.
- * @param onTranscribeCompleted Callback invoked when the transcription completes.
- * Provides either the transcribed text or an error if the transcription failed.
- *
+ * @param onTranscribeCompleted Callback invoked when the transcription completes. Provides either
+ * the transcribed text or an error if the transcription failed.
  */
-class AttendiTranscribePlugin(
+class AttendiSyncTranscribePlugin(
     private val service: TranscribeService,
     private val audioEncoder: TranscribeAudioEncoder = AttendiTranscribeAudioEncoderFactory.create(),
     private val onStartRecording: () -> Unit = { },
