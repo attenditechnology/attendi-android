@@ -8,6 +8,7 @@ import nl.attendi.attendispeechservice.services.transcribe.dto.request.AttendiTr
 import nl.attendi.attendispeechservice.services.transcribe.dto.request.AttendiTranscribeRequestConfig
 import nl.attendi.attendispeechservice.services.transcribe.dto.request.AttendiTranscribeRequestMetadata
 import nl.attendi.attendispeechservice.services.transcribe.dto.response.AttendiTranscribeResponse
+import nl.attendi.attendispeechservice.utils.UserAgentProvider
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
@@ -38,12 +39,12 @@ internal class AttendiTranscribeServiceImpl(
             userId = apiConfig.userId,
             unitId = apiConfig.unitId,
             metadata = AttendiTranscribeRequestMetadata(
-                userAgent = apiConfig.userAgent ?: "userAgent-not-set",
+                userAgent = apiConfig.userAgent ?: UserAgentProvider.getUserAgent(),
                 reportId = reportId
             ),
             config = AttendiTranscribeRequestConfig(
                 model = (apiConfig.modelType
-                    ?: throw Exception("No model type provided")).toString()
+                    ?: throw Exception("No model type provided"))
             )
         )
 
