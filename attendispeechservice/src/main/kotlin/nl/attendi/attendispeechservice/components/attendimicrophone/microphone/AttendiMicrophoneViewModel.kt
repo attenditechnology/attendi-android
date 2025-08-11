@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -28,12 +26,12 @@ import nl.attendi.attendispeechservice.components.attendirecorder.recorder.Atten
  * and plugin management to this ViewModel.
  *
  * @param recorder An [AttendiRecorder] instance that handles low-level audio recording operations.
- * @param plugins A list of [AttendiMicrophonePlugin] instances to be activated and managed alongside the microphone lifecycle.
  */
 class AttendiMicrophoneViewModel(
     private val recorder: AttendiRecorder,
-    private val plugins: List<AttendiMicrophonePlugin>,
-    private val onMicrophoneTapCallback: suspend () -> Unit
+    private val microphoneSettings: AttendiMicrophoneSettings,
+    private val onMicrophoneTap: () -> Unit,
+    private val onRecordingPermissionDenied: () -> Unit
 ) : ViewModel() {
 
     private companion object {
@@ -45,6 +43,7 @@ class AttendiMicrophoneViewModel(
     }
 
     private val microphoneModel = AttendiMicrophoneModel()
+    private var microphoneVolumeFeedbackPlugin: AttendiMicrophoneVolumeFeedbackPlugin? = null
 
     /**
      * A background job that updates the microphone state to "loading" if the recording does not
@@ -62,17 +61,70 @@ class AttendiMicrophoneViewModel(
     }
 
     init {
-        recorder.model.onError {
-            // Cancelling the loading job on error to prevent the microphone changing
-            // to loading state in case the recorder has started recording.
-            loadingJob?.cancel()
-        }
+        setupPluginLifecycle()
+        bindRecorderState()
+    }
 
+    fun onTap() {
+        showLoadingState()
+        microphoneModel.updateShouldVerifyAudioPermission(true)
+        onMicrophoneTap()
+    }
+
+    fun onAlreadyGrantedRecordingPermissions() {
+        microphoneModel.updateShouldVerifyAudioPermission(false)
+        toggleRecording()
+    }
+
+    fun onJustGrantedRecordingPermissions() {
+        microphoneModel.updateShouldVerifyAudioPermission(false)
         viewModelScope.launch {
-            plugins.forEach {
-                it.activate(recorder.model, microphoneModel)
-            }
+            recorder.start()
+        }
+    }
 
+    fun onDeniedPermissions() {
+        loadingJob?.cancel()
+        microphoneModel.updateShouldVerifyAudioPermission(false)
+        microphoneModel.updateState(AttendiMicrophoneState.Idle)
+
+        onRecordingPermissionDenied()
+    }
+
+    // Cancels loading state task and shows loading state if recording takes time to start.
+    private fun showLoadingState() {
+        if (recorder.recorderState.value != AttendiRecorderState.NotStartedRecording) {
+            return
+        }
+        loadingJob?.cancel()
+        loadingJob = viewModelScope.launch {
+            delay(LOADING_STATE_DELAY_MILLISECONDS)
+
+            if (loadingJob?.isCancelled == true) return@launch
+
+            // A verification of the recorder state is done after the delay as the recorder
+            // could already be recording and the loader should not be displayed in that case.
+            if (recorder.recorderState.value == AttendiRecorderState.NotStartedRecording) {
+                microphoneModel.updateState(AttendiMicrophoneState.Loading)
+            }
+        }
+    }
+
+    private fun toggleRecording() {
+        viewModelScope.launch {
+            if (recorder.recorderState.value == AttendiRecorderState.NotStartedRecording) {
+                recorder.start()
+            } else if (recorder.recorderState.value == AttendiRecorderState.Recording) {
+                // Cancel the loading job before stopping the recorder to prevent
+                // the microphone changing to loading state right after the delay.
+                loadingJob?.cancel()
+                recorder.stop()
+            }
+        }
+    }
+
+    private fun bindRecorderState() {
+        viewModelScope.launch {
             recorder.recorderState.collectLatest {
                 when (it) {
                     AttendiRecorderState.NotStartedRecording -> microphoneModel.updateState(
@@ -95,59 +147,17 @@ class AttendiMicrophoneViewModel(
         }
     }
 
-    fun onTap() {
-        showLoadingState()
+    private fun setupPluginLifecycle() {
         viewModelScope.launch {
-            onMicrophoneTapCallback()
-            microphoneModel.updateShouldVerifyAudioPermission(true)
-        }
-    }
-
-    fun onAlreadyGrantedRecordingPermissions() {
-        microphoneModel.updateShouldVerifyAudioPermission(false)
-        toggleRecording()
-    }
-
-    fun onJustGrantedRecordingPermissions() {
-        microphoneModel.updateShouldVerifyAudioPermission(false)
-        viewModelScope.launch {
-            recorder.start()
-        }
-    }
-
-    fun onDeniedPermissions() {
-        microphoneModel.updateShouldVerifyAudioPermission(false)
-        viewModelScope.launch {
-            microphoneModel.updateState(AttendiMicrophoneState.Idle)
-        }
-    }
-
-
-    private fun toggleRecording() {
-        viewModelScope.launch {
-            if (recorder.recorderState.value == AttendiRecorderState.NotStartedRecording) {
-                recorder.start()
-            } else if (recorder.recorderState.value == AttendiRecorderState.Recording) {
-                // Cancelling the loading job before stopping the recorder to prevent
-                // the microphone changing to loading state right after the delay
+            recorder.model.onError {
+                // Cancelling the loading job on error to prevent the microphone changing
+                // to loading state in case the recorder has started recording.
                 loadingJob?.cancel()
-                recorder.stop()
             }
-        }
-    }
 
-    private fun showLoadingState() {
-        if (recorder.recorderState.value != AttendiRecorderState.NotStartedRecording) {
-            return
-        }
-        loadingJob?.cancel()
-        loadingJob = viewModelScope.launch {
-            delay(LOADING_STATE_DELAY_MILLISECONDS)
-
-            // A verification of the recorder state is done after the delay as the recorder
-            // could already be recording and the loader should not be displayed in that case.
-            if (recorder.recorderState.value == AttendiRecorderState.NotStartedRecording) {
-                microphoneModel.updateState(AttendiMicrophoneState.Loading)
+            if (microphoneSettings.isVolumeFeedbackEnabled) {
+                microphoneVolumeFeedbackPlugin = AttendiMicrophoneVolumeFeedbackPlugin(microphoneModel = microphoneModel)
+                microphoneVolumeFeedbackPlugin?.activate(model = recorder.model)
             }
         }
     }
@@ -158,12 +168,8 @@ class AttendiMicrophoneViewModel(
         // is because onCleared() is a synchronous, blocking function, and Kotlin does not allow suspending
         // functions or coroutine scopes directly in onCleared().
         runBlocking(Dispatchers.IO) {
-            // Deactivate all plugins, possibly in parallel
-            plugins.map {
-                async { it.deactivate(recorder.model, microphoneModel) }
-            }.awaitAll()
-
-            // Release recorder resources
+            microphoneVolumeFeedbackPlugin?.deactivate(model = recorder.model)
+            // Release recorder resources.
             recorder.release()
         }
         super.onCleared()

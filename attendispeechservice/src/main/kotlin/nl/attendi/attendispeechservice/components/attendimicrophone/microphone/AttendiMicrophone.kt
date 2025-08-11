@@ -1,5 +1,6 @@
 package nl.attendi.attendispeechservice.components.attendimicrophone.microphone
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -49,6 +50,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
@@ -59,7 +62,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import nl.attendi.attendispeechservice.R
 import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorder
-import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderModel
 import nl.attendi.attendispeechservice.utils.RecordingPermissionStatus
 import nl.attendi.attendispeechservice.utils.VerifyAudioPermissionView
 import nl.attendi.attendispeechservice.utils.Vibrator.vibrate
@@ -69,9 +71,8 @@ import java.util.UUID
  * A customizable microphone button component for recording audio and triggering plugin-based behavior,
  * such as transcription, audio feedback, or contextual actions.
  *
- * This component coordinates with a provided [AttendiRecorder] instance and manages visual state and
- * interactions. Behavior can be extended using [AttendiMicrophonePlugin]s, which hook into the microphone
- * lifecycle via [AttendiRecorderModel] and [AttendiMicrophoneModel].
+ * This component coordinates with a provided [AttendiRecorder] instance and manages visual state and user
+ * interactions.
  *
  * Example usage:
  * ```
@@ -81,10 +82,6 @@ import java.util.UUID
  *     size = 64.dp,
  *     cornerRadius = 16.dp,
  *     colors = AttendiMicrophoneDefaults.colors(baseColor = Color.Red)
- *   ),
- *   plugins = listOf(
- *     AttendiTranscribePlugin(...),
- *     AttendiStopOnAudioFocusLossPlugin(context)
  *   )
  * )
  * ```
@@ -98,21 +95,21 @@ import java.util.UUID
  * @param settings An [AttendiMicrophoneSettings] instance used to configure the appearance, shape, and
  * feedback behavior (e.g. color, size, corner radius) of the microphone button.
  *
- * @param plugins A list of [AttendiMicrophonePlugin]s that extend the behavior of the microphone lifecycle.
- * Plugins can be used for features like audio feedback, transcription, error handling, or stopping
- * on interruptions.
+ * @param onMicrophoneTap An optional callback invoked after the microphone is activated.
+ * Use this to trigger custom logic following a tap interaction.
  *
- * @param onMicrophoneTapCallback A suspendable callback that is invoked when the user taps the microphone button.
- * This is called after the microphone is activated and can be used to trigger custom logic.
- *
+ * @param onRecordingPermissionDenied An optional callback invoked when the app fails to obtain
+ * the required microphone permissions.
+ * When [AttendiMicrophoneSettings.showsDefaultPermissionsDeniedDialog] is set to false,
+ * use this callback to handle denied access, show alerts, or guide the user to settings.
  */
 @Composable
 fun AttendiMicrophone(
     recorder: AttendiRecorder,
     modifier: Modifier = Modifier,
     settings: AttendiMicrophoneSettings = AttendiMicrophoneSettings(),
-    plugins: List<AttendiMicrophonePlugin> = listOf(),
-    onMicrophoneTapCallback: suspend () -> Unit = { }
+    onMicrophoneTap: () -> Unit = { },
+    onRecordingPermissionDenied: () -> Unit = { }
 ) {
     val coroutineScope = rememberCoroutineScope()
     var showPermanentlyDeniedDialog by remember { mutableStateOf(false) }
@@ -129,8 +126,9 @@ fun AttendiMicrophone(
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return AttendiMicrophoneViewModel(
                     recorder = recorder,
-                    plugins = plugins,
-                    onMicrophoneTapCallback = onMicrophoneTapCallback
+                    microphoneSettings = settings,
+                    onMicrophoneTap = onMicrophoneTap,
+                    onRecordingPermissionDenied = onRecordingPermissionDenied
                 ) as T
             }
         }
@@ -152,7 +150,9 @@ fun AttendiMicrophone(
 
                     RecordingPermissionStatus.DENIED_PERMANENTLY -> {
                         viewModel.onDeniedPermissions()
-                        showPermanentlyDeniedDialog = true
+                        if (settings.showsDefaultPermissionsDeniedDialog) {
+                            showPermanentlyDeniedDialog = true
+                        }
                     }
 
                     // The user can tap the microphone again to request for permissions.
@@ -165,9 +165,7 @@ fun AttendiMicrophone(
     }
 
     if (showPermanentlyDeniedDialog) {
-        settings.permissionsDeniedPermanentlyView?.invoke {
-            showPermanentlyDeniedDialog = false
-        } ?: AudioPermissionDeniedPermanentlyDialog(onDismiss = {
+        AudioPermissionDeniedPermanentlyDialog(onDismiss = {
             showPermanentlyDeniedDialog = false
         })
     }
@@ -190,23 +188,23 @@ private fun AudioPermissionDeniedPermanentlyDialog(onDismiss: () -> Unit) {
     vibrate(context)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(context.getString(R.string.no_microphone_permission_dialog_title)) },
-        text = { Text(context.getString(R.string.no_microphone_permission_dialog_body)) },
+        title = { Text(context.getString(R.string.noMicrophone_permission_dialog_title)) },
+        text = { Text(context.getString(R.string.noMicrophone_permission_dialog_body)) },
         confirmButton = {
             TextButton(onClick = {
-                // Open app settings
+                // Open app settings.
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.fromParts("package", activity.packageName, null)
                 }
                 activity.startActivity(intent)
                 onDismiss()
             }) {
-                Text(context.getString(R.string.no_microphone_permission_dialog_go_to_settings))
+                Text(context.getString(R.string.noMicrophone_permission_dialog_goToSettings_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(context.getString(R.string.cancel))
+                Text(context.getString(R.string.noMicrophone_permission_dialog_cancel_button))
             }
         }
     )
@@ -243,7 +241,11 @@ private fun AttendiMicrophoneView(
             when (microphoneUIState.state) {
                 AttendiMicrophoneState.Idle -> NotStartedRecordingView(settings)
                 AttendiMicrophoneState.Loading -> LoadingBeforeRecordingView(settings)
-                AttendiMicrophoneState.Recording -> RecordingView(settings, microphoneUIState.animatedMicrophoneFillLevel)
+                AttendiMicrophoneState.Recording -> RecordingView(
+                    settings,
+                    microphoneUIState.animatedMicrophoneFillLevel
+                )
+
                 AttendiMicrophoneState.Processing -> ProcessingView(settings)
             }
         }
@@ -255,6 +257,7 @@ private fun NotStartedRecordingView(
     settings: AttendiMicrophoneSettings
 ) {
     val foregroundColor = settings.colors.inactiveForegroundColor
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -264,7 +267,7 @@ private fun NotStartedRecordingView(
     ) {
         Icon(
             imageVector = ImageVector.vectorResource(id = R.drawable.microphone),
-            contentDescription = "Microphone icon",
+            contentDescription = context.getString(R.string.microphone_notRecording_title),
             modifier = Modifier
                 .fillMaxSize(0.5f)
                 .aspectRatio(1f),
@@ -279,6 +282,7 @@ private fun LoadingBeforeRecordingView(
 ) {
     val backgroundColor = settings.colors.inactiveBackgroundColor
     val foregroundColor = settings.colors.inactiveForegroundColor
+    val context = LocalContext.current
 
     val infiniteTransition = rememberInfiniteTransition(label = "attendiLoadingTransition")
     val rotation by infiniteTransition.animateFloat(
@@ -295,8 +299,8 @@ private fun LoadingBeforeRecordingView(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = ImageVector.vectorResource(id = R.drawable.attendilogo),
-            contentDescription = "LoadingIcon",
+            imageVector = ImageVector.vectorResource(id = R.drawable.loading),
+            contentDescription = context.getString(R.string.microphone_loading_title),
             tint = foregroundColor,
             modifier = Modifier
                 .fillMaxSize(0.33f)
@@ -305,6 +309,7 @@ private fun LoadingBeforeRecordingView(
     }
 }
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun RecordingView(
     settings: AttendiMicrophoneSettings,
@@ -312,6 +317,7 @@ private fun RecordingView(
 ) {
     val backgroundColor = settings.colors.activeBackgroundColor
     val foregroundColor = settings.colors.activeForegroundColor
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -331,18 +337,18 @@ private fun RecordingView(
             val rawFillPercentage: Double =
                 startYPercentage - (startYPercentage - endYPercentage) * animatedMicrophoneFillLevel
 
-            // Preventing a crash if rawFillPercentage returns NaN, Infinity or too large/small for Float
+            // Preventing a crash if rawFillPercentage returns NaN, Infinity or too large/small for Float.
             val safeFillPercentage: Float =
                 if (rawFillPercentage.isFinite()) rawFillPercentage.toFloat() else 0f
 
-            // Make the animation a bit smoother by tweening between the current and the target value
+            // Make the animation a bit smoother by tweening between the current and the target value.
             val animatedMicrophoneFillPercentage: Float by animateFloatAsState(
                 targetValue = safeFillPercentage,
                 animationSpec = tween(150),
                 label = "attendiMicrophoneFillPercentage"
             )
 
-            // Microphone volume fill
+            // Microphone volume fill.
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawLine(
                     color = foregroundColor,
@@ -357,7 +363,7 @@ private fun RecordingView(
 
             Icon(
                 imageVector = ImageVector.vectorResource(id = R.drawable.microphone),
-                contentDescription = null,
+                contentDescription = context.getString(R.string.microphone_recording_title),
                 modifier = Modifier.fillMaxSize(),
                 tint = foregroundColor
             )
@@ -371,9 +377,13 @@ private fun ProcessingView(
 ) {
     val backgroundColor = settings.colors.activeBackgroundColor
     val foregroundColor = settings.colors.activeForegroundColor
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
+            .semantics {
+                contentDescription = context.getString(R.string.microphone_processing_title)
+            }
             .fillMaxSize()
             .background(backgroundColor),
         contentAlignment = Alignment.Center,
@@ -382,6 +392,7 @@ private fun ProcessingView(
     }
 }
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun AnimatedRectangle(index: Int, color: Color) {
     val infiniteTransition = rememberInfiniteTransition(label = "attendiInfiniteTransition")
@@ -422,7 +433,6 @@ private fun ProcessingAnimation(foregroundColor: Color) {
     }
 }
 
-// MARK: - Previews
 @Preview
 @Composable
 private fun MicrophoneViewPreview() {
@@ -433,7 +443,7 @@ private fun MicrophoneViewPreview() {
                 size = 80.dp,
                 cornerRadius = 10.dp
             ),
-            microphoneUIState = AttendiMicrophoneUIState(AttendiMicrophoneState.Idle,1.0),
+            microphoneUIState = AttendiMicrophoneUIState(AttendiMicrophoneState.Idle, 1.0),
             onTap = { }
         )
     }
