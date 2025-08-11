@@ -1,6 +1,5 @@
 package nl.attendi.attendispeechservice.components.attendimicrophone.microphone
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
@@ -12,14 +11,22 @@ import androidx.compose.ui.unit.dp
  * @property size Sets the width and height of the microphone button.
  * @property cornerRadius Optional corner radius. If null, a fully rounded (50%) shape is used.
  * @property colors Visual color states for active/inactive modes.
- * @property permissionsDeniedPermanentlyView Optional composable to show when microphone permissions
- * are permanently denied by the user (e.g., via system settings).
+ * @property isVolumeFeedbackEnabled A flag indicating whether visual volume feedback is enabled during recording.
+ * When set to true, the UI provides additional feedback to the user by displaying the current volume
+ * level of the audio signal. This is typically visualized by filling the inside of the
+ * microphone's cone in sync with the detected volume level, giving users a real-time indication
+ * that the microphone is actively recording.
+ * This feature enhances user confidence that recording is working properly, especially in scenarios
+ * where audio input may otherwise be silent or subtle.
+ * @property showsDefaultPermissionsDeniedDialog A flag indicating whether the default permissions dialog will be shown.
+ * By default is set to true, if a custom view needs to be displayed set this flag to false.
  */
 data class AttendiMicrophoneSettings(
-    var size: Dp = 48.dp,
-    var cornerRadius: Dp? = null,
-    var colors: AttendiMicrophoneColors = AttendiMicrophoneDefaults.colors(),
-    var permissionsDeniedPermanentlyView: (@Composable (onDismiss: () -> Unit) -> Unit)? = null
+    val size: Dp = 48.dp,
+    val cornerRadius: Dp? = null,
+    val colors: AttendiMicrophoneColors = AttendiMicrophoneDefaults.colors(),
+    val isVolumeFeedbackEnabled: Boolean = true,
+    val showsDefaultPermissionsDeniedDialog: Boolean = true
 )
 
 /**

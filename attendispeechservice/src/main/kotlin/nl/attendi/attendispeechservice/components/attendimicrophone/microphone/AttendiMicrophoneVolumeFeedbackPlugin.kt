@@ -1,8 +1,7 @@
-package nl.attendi.attendispeechservice.components.attendimicrophone.plugins
+package nl.attendi.attendispeechservice.components.attendimicrophone.microphone
 
-import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophoneModel
-import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophonePlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderModel
+import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderPlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderState
 import kotlin.math.pow
 
@@ -11,11 +10,11 @@ import kotlin.math.pow
  * of the audio signal, which fills the inside of the microphone's cone in tandem with the
  * volume level.
  */
-class AttendiVolumeFeedbackPlugin : AttendiMicrophonePlugin {
+internal class AttendiMicrophoneVolumeFeedbackPlugin(private val microphoneModel: AttendiMicrophoneModel) : AttendiRecorderPlugin {
     private var volume: Double = 0.0
 
-    override suspend fun activate(recorderModel: AttendiRecorderModel, microphoneModel: AttendiMicrophoneModel) {
-        recorderModel.onAudio { audioFrame ->
+    override suspend fun activate(model: AttendiRecorderModel) {
+        model.onAudio { audioFrame ->
             val rmsLevel = audioFrame.getVolume()
             val alpha = getMovingAverageAlpha(rmsLevel)
             volume = (1 - alpha) * volume + alpha * rmsLevel
@@ -36,7 +35,7 @@ class AttendiVolumeFeedbackPlugin : AttendiMicrophonePlugin {
             microphoneModel.updateAnimatedMicrophoneFillLevel(newMicrophoneFillLevel)
         }
 
-        recorderModel.onStateUpdate { state ->
+        model.onStateUpdate { state ->
             if (state == AttendiRecorderState.NotStartedRecording) {
                 volume = 0.0
                 microphoneModel.updateAnimatedMicrophoneFillLevel(volume)
