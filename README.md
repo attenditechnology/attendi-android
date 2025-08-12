@@ -53,13 +53,13 @@ or you can update the `pom.xml` file by adding the following repository and depe
 <dependency>
   <groupId>nl.attendi</groupId>
   <artifactId>attendispeechservice</artifactId>
-  <version>0.3.2</version>
+  <version>[VERSION]</version>
 </dependency>
 ```
 
 or if you are using libs.versions.toml:
 [versions]
-attendiSpeechService = "0.3.2"
+attendiSpeechService = "[VERSION]"
 
 [libraries]
 attendi-speechservice = { group = "nl.attendi", name = "attendispeechservice", version.ref = "attendiSpeechService" }
