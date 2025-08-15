@@ -123,7 +123,7 @@ fun ExampleApp() {
 
         NavHost(
             navController = rootNavController,
-            startDestination = InternalRoute.TWO_MICROPHONES_STREAMING,
+            startDestination = currentScreen,
             route = InternalRoute.MAIN_ROUTE
         ) {
             composable(route = InternalRoute.TWO_MICROPHONES_STREAMING) {

@@ -177,6 +177,34 @@ class AttendiAsyncTranscribePlugin(private val service: AsyncTranscribeService) 
 }
 ```
 
+## Hooks Available on AttendiRecorderModel
+
+Plugins can subscribe to a variety of callbacks on AttendiRecorderModel to observe or modify behavior. Be aware of the threading contract for each callback:
+* Main Thread (Safe to update the UI)
+These callbacks are automatically dispatched on the Main Thread, making it safe to modify the view hierarchy directly:
+    - AttendiRecorderModel.onStartRecording
+    - AttendiRecorderModel.onStopRecording
+
+* Background Thread (Not safe to update the UI directly)
+These callbacks are dispatched on a background thread for performance reasons.
+    - AttendiRecorderModel.onBeforeStartRecording
+    - AttendiRecorderModel.onBeforeStopRecording
+    - AttendiRecorderModel.onAudio
+    - AttendiRecorderModel.onError
+    - AttendiRecorderModel.onStateUpdate
+Directly updating the UI here will throw:
+```kotlin
+android.view.ViewRootImpl$CalledFromWrongThreadException: 
+Only the original thread that created a view hierarchy can touch its views.
+```
+
+Tip: To safely update the UI from these callbacks, switch to the main thread:
+```kotlin
+withContext(Dispatchers.Main) {
+    myTextView.text = "Recording..."
+}
+```
+
 ## API Services
 
 The Attendi SDK provides three core service interfaces to communicate with Attendi's backend systems or your own custom infrastructure:
