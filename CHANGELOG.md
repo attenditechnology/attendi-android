@@ -5,7 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3 - 2025-08-15]
+### Improved
+- [AttendiRecorderModel.onStartRecording] and [AttendiRecorderModel.onStopRecording] callbacks are now automatically dispatched to the Main Thread. 
+  This ensures that UI updates inside these callbacks are safe and prevents `CalledFromWrongThreadException`.
+
+Before this change:
+```kotlin
+override suspend fun activate(model: AttendiRecorderModel) {
+    model.onStartRecording {
+        withContext(Dispatchers.Main) {
+            // Perform UI update safely.
+        } 
+      /**
+       * Updating the UI outside the Main Thread would throw:
+       * `android.view.ViewRootImpl$CalledFromWrongThreadException: Only the original thread that created a view hierarchy can touch its views.`
+       */
+    }
+}
+```
+After this change:
+```kotlin
+override suspend fun activate(model: AttendiRecorderModel) {
+    model.onStartRecording {
+      // Perform UI update safely without manual Main Thread dispatch.
+    }
+}
+```
+
 ## [0.3.2 - 2025-08-15]
+### Changed
 - Downgraded Kotlin from 2.2.0 -> 2.0.10 and SDK from 35 -> 34 to maintain compatibility for projects not yet migrated to the latest versions.
 
 ## [0.3.1 - 2025-08-12]
