@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import nl.attendi.attendispeechservice.audio.AudioRecorder
 import nl.attendi.attendispeechservice.audio.AudioRecorderImpl
 import nl.attendi.attendispeechservice.audio.AudioRecordingConfig
@@ -35,13 +37,40 @@ import kotlin.coroutines.cancellation.CancellationException
  * @param audioRecordingConfig Configuration parameters for audio capture such as sample rate, encoding, and channels.
  * @param recorder The underlying low-level audio recorder used to capture audio. Defaults to [AudioRecorderImpl].
  * @param plugins A list of plugins to customize behavior, such as transcription, error handling, or audio focus management.
- *
  * Note: Plugins are activated and deactivated in sync with the recorder lifecycle, enabling modular and reusable audio processing.
+ * @param callbackDispatcher The [CoroutineDispatcher] used for delivering UI-related callbacks.
+ *
+ * Threading contract for AttendiRecorder callbacks:
+ * **Main Thread (safe to modify the view hierarchy):**
+ * These callbacks are dispatched to the Main Thread automatically before calling them. This allows consumers
+ * to safely perform UI updates without manually switching threads:
+ * 1. [AttendiRecorderModel.onStartRecording]
+ * 2. [AttendiRecorderModel.onStopRecording]
+ * Note: This is intentional because UI updates are common and expected.
+ *
+ * **Background Thread (not safe to modify the view hierarchy):**
+ * These callbacks are dispatched on a background thread for performance reasons. Modifying the view hierarchy
+ * directly in these callbacks will cause:
+ * `android.view.ViewRootImpl$CalledFromWrongThreadException: Only the original thread that created a view hierarchy can touch its views.`
+ * 1. [AttendiRecorderModel.onBeforeStartRecording]
+ * 2. [AttendiRecorderModel.onBeforeStopRecording]
+ * 3. [AttendiRecorderModel.onAudio]
+ * 4. [AttendiRecorderModel.onError]
+ * 5. [AttendiRecorderModel.onStateUpdate]
+ * Note: This is intentional because UI updates are less expected and should be explicit if needed.
+ *
+ * If you need to update the UI in these background-thread callbacks, switch to the main thread manually:
+ * ```
+ * withContext(Dispatchers.Main) {
+ *     myTextView.text = "Recording..."
+ * }
+ * ```
  */
 internal class AttendiRecorderImpl(
     private val audioRecordingConfig: AudioRecordingConfig = AudioRecordingConfig(),
     private val recorder: AudioRecorder = AudioRecorderImpl,
-    private var plugins: List<AttendiRecorderPlugin> = emptyList()
+    private var plugins: List<AttendiRecorderPlugin> = emptyList(),
+    private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main
 ) : AttendiRecorder {
 
     override var model: AttendiRecorderModel = AttendiRecorderModel()
@@ -152,7 +181,9 @@ internal class AttendiRecorderImpl(
                         }
                     )
                     model.updateState(AttendiRecorderState.Recording)
-                    model.callbacks.onStartRecording.invokeAll()
+                    withContext(callbackDispatcher) {
+                        model.callbacks.onStartRecording.invokeAll()
+                    }
                 }
             }
         }
@@ -179,7 +210,9 @@ internal class AttendiRecorderImpl(
                 recorderJob?.cancel()
                 recorderJob = null
 
-                model.callbacks.onStopRecording.invokeAll()
+                withContext(callbackDispatcher) {
+                    model.callbacks.onStopRecording.invokeAll()
+                }
                 model.updateState(AttendiRecorderState.NotStartedRecording)
             }
         }
