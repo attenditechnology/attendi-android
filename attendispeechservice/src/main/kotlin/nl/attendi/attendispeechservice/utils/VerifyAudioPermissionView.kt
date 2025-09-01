@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -38,6 +39,11 @@ enum class RecordingPermissionStatus {
  * via the [onComplete] callback, passing a [RecordingPermissionStatus] to indicate
  * the outcome.
  *
+ * To make the composable preview-safe:
+ * 1. We perform a **safe cast** `val activity = context as? Activity`.
+ * 2. If `activity` is null, we skip Activity-dependent logic and provide a default permission
+ * status (e.g., `DENIED_TEMPORARILY`) so the preview can render without crashing.
+ *
  * @param onComplete Callback invoked once the permission request flow is complete,
  * with the corresponding [RecordingPermissionStatus].
  */
@@ -46,7 +52,7 @@ fun VerifyAudioPermissionView(
     onComplete: (RecordingPermissionStatus) -> Unit
 ) {
     val context = LocalContext.current
-    val activity = context as Activity
+    val activity = context as? Activity
     val permission = Manifest.permission.RECORD_AUDIO
 
     val isRecordingPermissionGranted =
@@ -65,9 +71,12 @@ fun VerifyAudioPermissionView(
             return@rememberLauncherForActivityResult
         }
 
-        val shouldShowRationale =
-            ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
-        onComplete(if (shouldShowRationale) RecordingPermissionStatus.DENIED_TEMPORARILY else RecordingPermissionStatus.DENIED_PERMANENTLY)
+        // If no Activity, we're probably in a composable preview.
+        activity?.let {
+            val shouldShowRationale =
+                ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+            onComplete(if (shouldShowRationale) RecordingPermissionStatus.DENIED_TEMPORARILY else RecordingPermissionStatus.DENIED_PERMANENTLY)
+        } ?: onComplete(RecordingPermissionStatus.DENIED_TEMPORARILY)
     }
 
     /**
@@ -96,4 +105,12 @@ fun VerifyAudioPermissionView(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+}
+
+@Preview
+@Composable
+private fun PreviewVerifyAudioPermissionView() {
+    VerifyAudioPermissionView(
+        onComplete = { }
+    )
 }

@@ -183,7 +183,7 @@ fun AttendiMicrophone(
 @Composable
 private fun AudioPermissionDeniedPermanentlyDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val activity = context as Activity
+    val activity = context as? Activity
 
     vibrate(context)
     AlertDialog(
@@ -194,9 +194,9 @@ private fun AudioPermissionDeniedPermanentlyDialog(onDismiss: () -> Unit) {
             TextButton(onClick = {
                 // Open app settings.
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.fromParts("package", activity.packageName, null)
+                    data = Uri.fromParts("package", activity?.packageName, null)
                 }
-                activity.startActivity(intent)
+                activity?.startActivity(intent)
                 onDismiss()
             }) {
                 Text(context.getString(R.string.noMicrophone_permission_dialog_goToSettings_button))
