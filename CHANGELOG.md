@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5 - 2025-09-01]
+### Fixed
+- Composable Preview crashes when previewing certain UI components:
+1. VerifyAudioPermissionView
+2. AudioPermissionDeniedPermanentlyDialog (from AttendiMicrophone)
+The crashes were caused by casting LocalContext.current directly to Activity:
+```kotlin
+val activity = context as Activity
+```
+In Android Studio previews, LocalContext.current returns a BridgeContext instead of an actual Activity. 
+The fix uses a safe cast (as? Activity) and handles the null case, making previews render safely without affecting runtime behavior.
+
 ## [0.3.4 - 2025-09-01]
 ### Fixed
 - Memory leak caused by holding a reference to context in the following plugins:
