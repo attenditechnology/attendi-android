@@ -27,24 +27,28 @@ import nl.attendi.attendispeechservice.utils.Vibrator
  * Defaults to [R.raw.error_notification]. Must be annotated with [RawRes].
  */
 class AttendiErrorPlugin(
-    private val context: Context,
+    context: Context,
     @RawRes errorNotificationSoundId: Int? = null
 ) : AttendiRecorderPlugin {
 
+    /**
+     * Application context, safe to hold without leaking Activity instances.
+     * Don’t hold a reference to the context directly, as it may cause memory leaks.
+     */
+    private val appContext = context.applicationContext
     private val errorNotificationSoundId: Int = errorNotificationSoundId ?: R.raw.error_notification
-
     private var errorNotificationSound: MediaPlayer? = null
 
     override suspend fun activate(model: AttendiRecorderModel) {
         if (errorNotificationSound == null) {
             errorNotificationSound =
-                MediaPlayer.create(context, errorNotificationSoundId)
+                MediaPlayer.create(appContext, errorNotificationSoundId)
         }
 
         model.onError { error ->
             if (error !is AudioRecorderException.AlreadyRecording) {
                 errorNotificationSound?.start()
-                Vibrator.vibrate(context)
+                Vibrator.vibrate(appContext)
             }
         }
     }

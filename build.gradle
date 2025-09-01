@@ -4,7 +4,7 @@ buildscript {
      */
     ext {
         // Project Version
-        project_version = "0.3.3"
+        project_version = "0.3.4"
 
         // App targets
         compile_sdk_version = 34
