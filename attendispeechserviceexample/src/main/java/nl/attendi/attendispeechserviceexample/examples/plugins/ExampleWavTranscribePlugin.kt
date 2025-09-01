@@ -19,9 +19,14 @@ import java.io.FileOutputStream
  * @param context Android context used for file storage and logging.
  */
 class ExampleWavTranscribePlugin(
-    private val context: Context
+    context: Context
 ) : AttendiRecorderPlugin {
 
+    /**
+     * Application context, safe to hold without leaking Activity instances.
+     * Don’t hold a reference to the context directly, as it may cause memory leaks.
+     */
+    private val appContext = context.applicationContext
     private var audioFrames = mutableListOf<Short>()
 
     override suspend fun activate(model: AttendiRecorderModel) {
@@ -31,7 +36,7 @@ class ExampleWavTranscribePlugin(
 
         model.onStopRecording {
             try {
-                val outputFile = File(context.getExternalFilesDir(null), "output.wav")
+                val outputFile = File(appContext.getExternalFilesDir(null), "output.wav")
                 val wav = AudioEncoder.pcmToWav(audioFrames, 16000)
                 FileOutputStream(outputFile).use { fos ->
                     fos.write(wav)

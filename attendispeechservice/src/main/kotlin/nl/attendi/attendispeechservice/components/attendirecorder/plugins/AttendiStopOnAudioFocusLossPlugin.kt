@@ -31,15 +31,20 @@ import nl.attendi.attendispeechservice.components.attendirecorder.recorder.Atten
  * @param context The Android context used to access system audio services.
  */
 class AttendiStopOnAudioFocusLossPlugin(
-    private val context: Context
+    context: Context
 ) : AttendiRecorderPlugin {
 
+    /**
+     * Application context, safe to hold without leaking Activity instances.
+     * Don’t hold a reference to the context directly, as it may cause memory leaks.
+     */
+    private val appContext = context.applicationContext
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override suspend fun activate(model: AttendiRecorderModel) {
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
         val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setOnAudioFocusChangeListener { focusChange ->

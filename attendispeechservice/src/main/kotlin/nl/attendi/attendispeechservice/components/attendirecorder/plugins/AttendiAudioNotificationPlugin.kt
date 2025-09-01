@@ -23,11 +23,16 @@ import kotlin.coroutines.suspendCoroutine
  *
  */
 class AttendiAudioNotificationPlugin(
-    private val context: Context,
+    context: Context,
     @RawRes startNotificationSoundId: Int? = null,
     @RawRes stopNotificationSoundId: Int? = null
 ) : AttendiRecorderPlugin {
 
+    /**
+     * Application context, safe to hold without leaking Activity instances.
+     * Don’t hold a reference to the context directly, as it may cause memory leaks.
+     */
+    private val appContext = context.applicationContext
     private val startNotificationSoundId: Int = startNotificationSoundId ?: R.raw.start_notification
     private val stopNotificationSoundId: Int = stopNotificationSoundId ?: R.raw.stop_notification
 
@@ -41,11 +46,11 @@ class AttendiAudioNotificationPlugin(
     override suspend fun activate(model: AttendiRecorderModel) {
         if (startNotificationSound == null) {
             startNotificationSound =
-                MediaPlayer.create(context, startNotificationSoundId)
+                MediaPlayer.create(appContext, startNotificationSoundId)
         }
         if (stopNotificationSound == null) {
             stopNotificationSound =
-                MediaPlayer.create(context, stopNotificationSoundId)
+                MediaPlayer.create(appContext, stopNotificationSoundId)
         }
 
         model.onBeforeStartRecording {

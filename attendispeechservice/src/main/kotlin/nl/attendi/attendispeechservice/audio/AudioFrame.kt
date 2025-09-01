@@ -17,6 +17,7 @@ data class AudioFrame(
     fun getVolume(): Double {
         if (samples.isEmpty()) return 0.0
         val sum = samples.fold(0.0) { acc, element -> acc + element * element }
-        return sqrt(sum / samples.size)
+        val rms = sqrt(sum / samples.size)
+        return rms.takeIf { it.isFinite() } ?: 0.0
     }
 }
