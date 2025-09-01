@@ -40,10 +40,18 @@ android {
     }
 
     buildFeatures {
-        compose true
+        compose = true
     }
 
-    namespace 'nl.attendi.attendispeechservice'
+    namespace = 'nl.attendi.attendispeechservice'
+
+    // Expose the release variant for publishing
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
 }
 
 dependencies {

@@ -25,7 +25,7 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
-            useSupportLibrary true
+            useSupportLibrary = true
         }
         buildConfigField "String", "ATTENDI_CUSTOMER_KEY", "\"${attendiCustomerKey}\""
     }
@@ -47,8 +47,8 @@ android {
     }
 
     buildFeatures {
-        compose true
-        buildConfig true
+        compose = true
+        buildConfig = true
     }
 
     packagingOptions {
@@ -57,7 +57,7 @@ android {
         }
     }
 
-    namespace 'nl.attendi.attendispeechserviceexample'
+    namespace = 'nl.attendi.attendispeechserviceexample'
 }
 
 dependencies {
