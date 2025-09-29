@@ -182,6 +182,7 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
         } catch (e: Exception) {
             if (retryCount == 0) {
                 listener.onError(AsyncTranscribeServiceError.Unknown(e.message))
+                handleSocketClosed()
             } else {
                 connectSocket(
                     listener,
@@ -221,10 +222,6 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
                     }
 
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                        listener?.onError(
-                            AsyncTranscribeServiceError.Unknown(message = response?.message)
-                        )
-                        handleSocketClosed()
                         if (continuation.isActive) continuation.resumeWithException(t)
                     }
                 })

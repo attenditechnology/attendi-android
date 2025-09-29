@@ -28,7 +28,7 @@ import okhttp3.Request
 internal class AttendiAsyncTranscribeServiceImpl(
     private val apiConfig: AttendiTranscribeAPIConfig,
     private val authenticationService: AttendiAuthenticationService,
-    private val accessToken: String? = null
+    private var accessToken: String? = null
 ) : BaseAsyncTranscribeService() {
 
     private companion object {
@@ -38,6 +38,7 @@ internal class AttendiAsyncTranscribeServiceImpl(
 
     override suspend fun createWebSocketRequest(): Request {
         val accessToken = accessToken ?: authenticationService.authenticate(apiConfig = apiConfig)
+        this.accessToken = accessToken
         return createAttendiWebSocketRequest(accessToken)
     }
 
