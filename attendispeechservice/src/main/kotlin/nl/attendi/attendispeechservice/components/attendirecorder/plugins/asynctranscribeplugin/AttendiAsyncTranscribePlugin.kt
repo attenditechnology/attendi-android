@@ -92,10 +92,10 @@ class AttendiAsyncTranscribePlugin(
      * Starts sending audio when enough buffered samples are collected.
      */
     override suspend fun activate(model: AttendiRecorderModel) {
-        model.onStartRecording {
+        model.onBeforeStartRecording {
             stateMutex.withLock {
                 if (isStreamConnecting) {
-                    return@onStartRecording
+                    return@onBeforeStartRecording
                 }
                 isStreamConnecting = true
 
