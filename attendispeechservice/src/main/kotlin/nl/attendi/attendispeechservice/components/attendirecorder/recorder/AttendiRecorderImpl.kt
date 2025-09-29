@@ -172,17 +172,22 @@ internal class AttendiRecorderImpl(
             model.callbacks.onBeforeStartRecording.invokeAll()
 
             recorderJob = internalScope.launch {
-                delay(delayMilliseconds)
-                handleErrors {
-                    recorder.startRecording(
-                        audioRecordingConfig = audioRecordingConfig,
-                        onAudio = { audioFrame ->
-                            model.callbacks.onAudio.invokeAll(audioFrame)
+                startStopMutex.withLock {
+                    if (!hasStarted || isReleased) {
+                        return@withLock
+                    }
+                    delay(delayMilliseconds)
+                    handleErrors {
+                        recorder.startRecording(
+                            audioRecordingConfig = audioRecordingConfig,
+                            onAudio = { audioFrame ->
+                                model.callbacks.onAudio.invokeAll(audioFrame)
+                            }
+                        )
+                        model.updateState(AttendiRecorderState.Recording)
+                        withContext(callbackDispatcher) {
+                            model.callbacks.onStartRecording.invokeAll()
                         }
-                    )
-                    model.updateState(AttendiRecorderState.Recording)
-                    withContext(callbackDispatcher) {
-                        model.callbacks.onStartRecording.invokeAll()
                     }
                 }
             }
