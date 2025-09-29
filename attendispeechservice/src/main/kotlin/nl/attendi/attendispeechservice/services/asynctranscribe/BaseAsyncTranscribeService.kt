@@ -32,6 +32,10 @@ import kotlin.coroutines.resumeWithException
  * - [getOpenMessage]: to send a configuration payload upon connection.
  * - [getCloseMessage] and [getCloseCode]: to customize socket shutdown behavior.
  *
+ * A custom [OkHttpClient] can also be provided by overriding [createWebSocketClient],
+ * allowing control over timeouts, interceptors, TLS settings, or other client-level
+ * WebSocket configurations.
+ *
  * This base class is designed to be extended by service implementations targeting specific
  * WebSocket-based transcription backends, while abstracting away connection boilerplate.
  */
@@ -62,9 +66,17 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
     private val connectMutex = Mutex()
     private var socket: WebSocket? = null
     private var listener: AsyncTranscribeServiceListener? = null
-    private val webSocketClient = OkHttpClient()
     private var isConnected = false
     private var isDisconnecting = false
+
+    /**
+     * Creates and configures the [OkHttpClient] instance used for establishing the WebSocket connection.
+     *
+     * @return A configured [OkHttpClient] ready to be used for WebSocket communication.
+     */
+    protected open fun createWebSocketClient(): OkHttpClient {
+        return OkHttpClient()
+    }
 
     /**
      * Creates the WebSocket [Request] object used to initiate the connection.
@@ -198,7 +210,7 @@ abstract class BaseAsyncTranscribeService : AsyncTranscribeService {
     private suspend fun connectSocket(request: Request) {
         withTimeout(CONNECTION_TIMEOUT_MILLISECONDS) {
             suspendCancellableCoroutine { continuation ->
-                socket = webSocketClient.newWebSocket(request, object : WebSocketListener() {
+                socket = createWebSocketClient().newWebSocket(request, object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
                         getOpenMessage()?.let { configMessage ->
                             webSocket.send(configMessage)

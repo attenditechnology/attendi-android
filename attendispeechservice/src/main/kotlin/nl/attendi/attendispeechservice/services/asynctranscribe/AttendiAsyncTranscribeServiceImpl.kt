@@ -2,6 +2,7 @@ package nl.attendi.attendispeechservice.services.asynctranscribe
 
 import nl.attendi.attendispeechservice.services.AttendiTranscribeAPIConfig
 import nl.attendi.attendispeechservice.services.authentication.AttendiAuthenticationService
+import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
