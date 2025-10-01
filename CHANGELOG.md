@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8 - 2025-10-01]
+### Fixed
+- A deadlock issue that could occur when onStart or onStop were called from a plugin while a recording was already in progress.
+
 ## [0.3.7 - 2025-09-29]
 ### Changed
 - `AttendiAsyncTranscribePlugin` now connects to the WebSocket in `onBeforeStartRecording` instead of `onStartRecording`.
@@ -14,10 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Race condition issue where stopping a recording and immediately starting a new one could leave the `AttendiMicrophone` in an incorrect UI state.
 - `AsyncTranscribeService` retry mechanism where the retry logic would not continue properly after a successful retry attempt.
-
-### Fixed
-- Downgraded Kotlin from 2.2.0 -> 2.0.10 and SDK from 35 -> 34 again to ensure compatibility with projects that have not yet migrated.
-  This reverts the reintroduction of newer versions in 0.3.5.
 
 ## [0.3.6 - 2025-09-02]
 ### Changed

@@ -124,11 +124,17 @@ internal class AttendiRecorderImpl(
          * overriding them directly when using the plugin, preserving encapsulation and consistency.
          */
         model.onStartCalled = {
-            start()
+            // Launch in a separate coroutine to prevent deadlocks if start() acquires locks or suspends.
+            internalScope.launch {
+                start()
+            }
         }
 
         model.onStopCalled = {
-            stop()
+            // Launch in a separate coroutine to prevent deadlocks if stop() acquires locks or suspends.
+            internalScope.launch {
+                stop()
+            }
         }
 
         internalScope.launch {
