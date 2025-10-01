@@ -57,7 +57,6 @@ class AttendiAsyncTranscribePlugin(
 ) : AttendiRecorderPlugin {
 
     private var transcribeStream = AttendiTranscribeStream()
-    private var streamingBuffer = mutableListOf<Short>()
 
     // Used for ensuring thread safety.
     private val stateMutex = Mutex()
@@ -101,12 +100,16 @@ class AttendiAsyncTranscribePlugin(
 
                 resetPluginState()
                 onStreamConnecting()
-
                 try {
                     val serviceListener = createServiceListener(model = model)
                     service.connect(listener = serviceListener)
                 } catch (exception: Exception) {
-                    forceStopRecording(model, exception)
+                    /// A new coroutine is used to free the mutex and avoid a deadlock in case an error happens immediately after trying to connect.
+                    /// Without a task and calling processStreamCompleted inside this same thread will cause a deadlock.
+                    internalScope.launch {
+                        forceStopRecording(model, exception)
+                        processStreamCompleted()
+                    }
                 }
             }
         }
@@ -170,10 +173,10 @@ class AttendiAsyncTranscribePlugin(
         isConnectionOpen = false
         isClosingConnection = false
         pluginError = null
-        streamingBuffer.clear()
     }
 
     private suspend fun forceStopRecording(model: AttendiRecorderModel, exception: Exception) {
+        pluginError = exception
         model.stop()
         model.callbacks.onError.invokeAll(exception)
     }
@@ -186,8 +189,6 @@ class AttendiAsyncTranscribePlugin(
             isClosingConnection = true
 
             service.disconnect()
-
-            streamingBuffer.clear()
         }
     }
 
