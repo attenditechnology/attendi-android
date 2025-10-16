@@ -8,6 +8,7 @@ data class TwoMicrophonesStreamingScreenModel(
     val longTextFieldModel: TextFieldModel,
     val errorMessage: String? = null,
     val isErrorAlertShown: Boolean = false,
+    val onOrientationChange: () -> Unit = { },
     val onAlertDialogDismiss: () -> Unit = { }
 ) {
     data class TextFieldModel(

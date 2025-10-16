@@ -32,14 +32,17 @@ class TwoMicrophonesStreamingScreenViewModel(private val applicationContext: Con
     private val shortTextRecorder: AttendiRecorder = AttendiRecorderFactory.create()
     private val largeTextRecorder: AttendiRecorder = AttendiRecorderFactory.create()
     private val _model: MutableStateFlow<TwoMicrophonesStreamingScreenModel> =
-        MutableStateFlow(TwoMicrophonesStreamingScreenModel(
-                shortTextFieldModel = TwoMicrophonesStreamingScreenModel.TextFieldModel(recorder = shortTextRecorder),
-                longTextFieldModel = TwoMicrophonesStreamingScreenModel.TextFieldModel(recorder = largeTextRecorder),
-                onAlertDialogDismiss = {
-                    onAlertDialogDismiss()
-                }
-            )
-        )
+        MutableStateFlow(
+            TwoMicrophonesStreamingScreenModel(
+            shortTextFieldModel = TwoMicrophonesStreamingScreenModel.TextFieldModel(recorder = shortTextRecorder),
+            longTextFieldModel = TwoMicrophonesStreamingScreenModel.TextFieldModel(recorder = largeTextRecorder),
+            onAlertDialogDismiss = {
+                onAlertDialogDismiss()
+            },
+            onOrientationChange = {
+                onOrientationChange()
+            }
+        ))
 
     init {
         viewModelScope.launch {
@@ -54,6 +57,12 @@ class TwoMicrophonesStreamingScreenViewModel(private val applicationContext: Con
                 errorMessage = null,
                 isErrorAlertShown = false
             )
+        }
+    }
+
+    private fun onOrientationChange() {
+        viewModelScope.launch {
+            largeTextRecorder.stop()
         }
     }
 
