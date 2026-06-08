@@ -4,12 +4,16 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiAudioNotificationPlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiErrorPlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiStopOnAudioFocusLossPlugin
@@ -29,10 +33,19 @@ class TwoMicrophonesStreamingScreenViewModel(private val applicationContext: Con
         _model.asStateFlow()
     }
 
+    /**
+     * One-shot event emitted after both recorders have been fully released.
+     * The screen collects this to trigger the actual navigation up, ensuring the
+     * navigation only happens once cleanup is complete.
+     */
+    private val _navigateUpChannel = Channel<Unit>(Channel.CONFLATED)
+    val navigateUpEvent: Flow<Unit> = _navigateUpChannel.receiveAsFlow()
+
     private val shortTextRecorder: AttendiRecorder = AttendiRecorderFactory.create()
     private val largeTextRecorder: AttendiRecorder = AttendiRecorderFactory.create()
     private val _model: MutableStateFlow<TwoMicrophonesStreamingScreenModel> =
-        MutableStateFlow(TwoMicrophonesStreamingScreenModel(
+        MutableStateFlow(
+            TwoMicrophonesStreamingScreenModel(
                 shortTextFieldModel = TwoMicrophonesStreamingScreenModel.TextFieldModel(recorder = shortTextRecorder),
                 longTextFieldModel = TwoMicrophonesStreamingScreenModel.TextFieldModel(recorder = largeTextRecorder),
                 onAlertDialogDismiss = {
@@ -45,6 +58,30 @@ class TwoMicrophonesStreamingScreenViewModel(private val applicationContext: Con
         viewModelScope.launch {
             shortTextRecorder.setPlugins(createSmallRecorderPlugins())
             largeTextRecorder.setPlugins(createLargeRecorderPlugins())
+        }
+    }
+
+    /**
+     * Releases both recorder instances in parallel, then signals the screen to navigate up.
+     *
+     * Using [viewModelScope] here (rather than a detached [kotlinx.coroutines.CoroutineScope])
+     * ties the cleanup work to the ViewModel's own lifecycle. The coroutine is guaranteed to
+     * complete before the scope is cancelled, because navigation only happens after the channel
+     * emits — which only happens after both recorders finish releasing.
+     *
+     * Both [shortTextRecorder] and [largeTextRecorder] are released in parallel to minimise the
+     * time the user waits before the screen transitions.
+     *
+     * This method is the single entry point for leaving this screen and should be called from
+     * both the TopAppBar back button and the system back gesture (via [BackHandler]).
+     */
+    fun onNavigateUp() {
+        viewModelScope.launch(Dispatchers.IO) {
+            awaitAll(
+                async { shortTextRecorder.release() },
+                async { largeTextRecorder.release() }
+            )
+            _navigateUpChannel.send(Unit)
         }
     }
 
@@ -146,13 +183,10 @@ class TwoMicrophonesStreamingScreenViewModel(private val applicationContext: Con
     }
 
     override fun onCleared() {
-        // The reason runBlocking(Dispatchers.IO) is used here instead of CoroutineScope(Dispatchers.IO)
-        // is because onCleared() is a synchronous, blocking function, and Kotlin does not allow suspending
-        // functions or coroutine scopes directly in onCleared().
-        runBlocking(Dispatchers.IO) {
-            shortTextRecorder.release()
-            largeTextRecorder.release()
-        }
+        // Don't need to override.
+        // Recorder resources are released explicitly in [onNavigateUp], which is called by both
+        // the TopAppBar back button and the system back gesture. By the time this ViewModel is
+        // cleared the recorders are already released, so no additional cleanup is needed here.
         super.onCleared()
     }
 }

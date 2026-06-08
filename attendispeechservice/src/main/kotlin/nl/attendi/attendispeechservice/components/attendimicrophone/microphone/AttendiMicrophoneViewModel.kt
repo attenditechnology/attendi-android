@@ -2,13 +2,14 @@ package nl.attendi.attendispeechservice.components.attendimicrophone.microphone
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophoneViewModel.Companion.LOADING_STATE_DELAY_MILLISECONDS
 import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorder
 import nl.attendi.attendispeechservice.components.attendirecorder.recorder.AttendiRecorderState
 
@@ -156,21 +157,17 @@ class AttendiMicrophoneViewModel(
             }
 
             if (microphoneSettings.isVolumeFeedbackEnabled) {
-                microphoneVolumeFeedbackPlugin = AttendiMicrophoneVolumeFeedbackPlugin(microphoneModel = microphoneModel)
+                microphoneVolumeFeedbackPlugin =
+                    AttendiMicrophoneVolumeFeedbackPlugin(microphoneModel = microphoneModel)
                 microphoneVolumeFeedbackPlugin?.activate(model = recorder.model)
             }
         }
     }
 
     override fun onCleared() {
-        // Wait for plugin deactivation to finish and releasing the recorder before the viewModel
-        // is destroyed. The reason runBlocking(Dispatchers.IO) is used here instead of CoroutineScope(Dispatchers.IO)
-        // is because onCleared() is a synchronous, blocking function, and Kotlin does not allow suspending
-        // functions or coroutine scopes directly in onCleared().
-        runBlocking(Dispatchers.IO) {
+        // Plugin deactivation.
+        CoroutineScope(Dispatchers.IO).launch {
             microphoneVolumeFeedbackPlugin?.deactivate(model = recorder.model)
-            // Release recorder resources.
-            recorder.release()
         }
         super.onCleared()
     }

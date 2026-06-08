@@ -72,4 +72,5 @@ dependencies {
 
     // Essentials
     implementation "androidx.core:core-ktx:$core_ktx_version"
+    implementation "androidx.compose.material:material-icons-extended"
 }

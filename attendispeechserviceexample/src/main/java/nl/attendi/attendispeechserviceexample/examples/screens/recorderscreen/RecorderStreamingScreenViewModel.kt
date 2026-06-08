@@ -3,6 +3,7 @@ package nl.attendi.attendispeechserviceexample.examples.screens.recorderscreen
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiAudioNotificationPlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiErrorPlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiStopOnAudioFocusLossPlugin
@@ -32,17 +32,18 @@ class RecorderStreamingScreenViewModel(private val applicationContext: Context) 
 
     private val recorder: AttendiRecorder = AttendiRecorderFactory.create()
     private val _model: MutableStateFlow<RecorderStreamingScreenModel> =
-        MutableStateFlow(RecorderStreamingScreenModel(
-            onTextFieldTextChange = {
-                onTextFieldTextChange(it)
-            },
-            onStartRecordingTap = {
-                onButtonPressed()
-            },
-            onAlertDialogDismiss = {
-                onAlertDialogDismiss()
-            }
-        ))
+        MutableStateFlow(
+            RecorderStreamingScreenModel(
+                onTextFieldTextChange = {
+                    onTextFieldTextChange(it)
+                },
+                onStartRecordingTap = {
+                    onButtonPressed()
+                },
+                onAlertDialogDismiss = {
+                    onAlertDialogDismiss()
+                }
+            ))
 
     init {
         setupInitialConfiguration()
@@ -69,13 +70,16 @@ class RecorderStreamingScreenViewModel(private val applicationContext: Context) 
     private fun onRecorderStateChange(newRecorderState: AttendiRecorderState) {
         val buttonTitle = when (newRecorderState) {
             AttendiRecorderState.NotStartedRecording ->
-             "Start Recording"
-                AttendiRecorderState.LoadingBeforeRecording ->
-             "Loading"
-                AttendiRecorderState.Recording ->
-             "Stop Recording"
-                AttendiRecorderState.Processing ->
-             "Processing"
+                "Start Recording"
+
+            AttendiRecorderState.LoadingBeforeRecording ->
+                "Loading"
+
+            AttendiRecorderState.Recording ->
+                "Stop Recording"
+
+            AttendiRecorderState.Processing ->
+                "Processing"
         }
         _model.update { currentValue ->
             currentValue.copy(
@@ -150,10 +154,19 @@ class RecorderStreamingScreenViewModel(private val applicationContext: Context) 
     }
 
     override fun onCleared() {
-        // The reason runBlocking(Dispatchers.IO) is used here instead of CoroutineScope(Dispatchers.IO)
-        // is because onCleared() is a synchronous, blocking function, and Kotlin does not allow suspending
-        // functions or coroutine scopes directly in onCleared().
-        runBlocking(Dispatchers.IO) {
+        /**
+         * Releases the recorder resources owned by this ViewModel in a detached Coroutine scope.
+         *
+         * The ViewModel that creates recorder instances and their associated plugins is
+         * responsible for releasing them when they are no longer needed.
+         *
+         * This implementation performs the cleanup from [onCleared] because the example
+         * screen navigates away immediately. If needed, the process of releasing
+         * recorder resources can be achieved on a custom scope using the suspend function [recorder.release].
+         * Check [TwoMicrophonesStreamingScreenViewModel] how the recorder release is handled
+         * and embed into the screen lifecycle.
+         */
+        CoroutineScope(Dispatchers.IO).launch {
             recorder.release()
         }
         super.onCleared()

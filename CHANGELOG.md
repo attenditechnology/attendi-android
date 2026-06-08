@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2026-06-09
+### Changed
+- Recorder resource ownership and cleanup responsibility has been moved to the ViewModel that creates the recorder instances.
+
+### Removed
+- Automatic recorder resource cleanup from `AttendiMicrophoneViewModel` in onCleared().
+
+### Migration Guide
+- Ensure all recorder-owning ViewModels explicitly call `release()` on their recorder instances before they are destroyed.
+- Check `TwoMicrophonesStreamingScreenViewModel` to see how the recorder release is handled and embed into the screen lifecycle.
+- Check `RecorderStreamingScreenView` to see how a recorder without the `AttendiMicrophone` component can be used.
+
 ## [0.3.8 - 2025-10-01]
 ### Fixed
 - A deadlock issue that could occur when onStart or onStop were called from a plugin while a recording was already in progress.
@@ -307,7 +319,7 @@ This release introduces some simplifies styling the AttendiMicrophone by removin
 An example:
 
 ```kotlin
-import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone
+`import nl.attendi.attendispeechservice.components.attendimicrophone.AttendiMicrophone`
 
 // within some ComponentActivity or Jetpack Composable
 
