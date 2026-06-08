@@ -3,13 +3,11 @@ package nl.attendi.attendispeechserviceexample.examples.screens.twomicrophonesst
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiAudioNotificationPlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiErrorPlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiStopOnAudioFocusLossPlugin
@@ -32,7 +30,8 @@ class TwoMicrophonesStreamingScreenViewModel(private val applicationContext: Con
     private val shortTextRecorder: AttendiRecorder = AttendiRecorderFactory.create()
     private val largeTextRecorder: AttendiRecorder = AttendiRecorderFactory.create()
     private val _model: MutableStateFlow<TwoMicrophonesStreamingScreenModel> =
-        MutableStateFlow(TwoMicrophonesStreamingScreenModel(
+        MutableStateFlow(
+            TwoMicrophonesStreamingScreenModel(
                 shortTextFieldModel = TwoMicrophonesStreamingScreenModel.TextFieldModel(recorder = shortTextRecorder),
                 longTextFieldModel = TwoMicrophonesStreamingScreenModel.TextFieldModel(recorder = largeTextRecorder),
                 onAlertDialogDismiss = {
@@ -143,16 +142,5 @@ class TwoMicrophonesStreamingScreenViewModel(private val applicationContext: Con
                 }
             )
         )
-    }
-
-    override fun onCleared() {
-        // The reason runBlocking(Dispatchers.IO) is used here instead of CoroutineScope(Dispatchers.IO)
-        // is because onCleared() is a synchronous, blocking function, and Kotlin does not allow suspending
-        // functions or coroutine scopes directly in onCleared().
-        runBlocking(Dispatchers.IO) {
-            shortTextRecorder.release()
-            largeTextRecorder.release()
-        }
-        super.onCleared()
     }
 }

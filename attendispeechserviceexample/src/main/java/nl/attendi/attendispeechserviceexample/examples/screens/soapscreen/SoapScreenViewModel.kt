@@ -3,14 +3,12 @@ package nl.attendi.attendispeechserviceexample.examples.screens.soapscreen
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiAudioNotificationPlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiErrorPlugin
 import nl.attendi.attendispeechservice.components.attendirecorder.plugins.AttendiStopOnAudioFocusLossPlugin
@@ -132,15 +130,5 @@ class SoapScreenViewModel(private val applicationContext: Context) : ViewModel()
                 }
             )
         )
-    }
-
-    override fun onCleared() {
-        // The reason runBlocking(Dispatchers.IO) is used here instead of CoroutineScope(Dispatchers.IO)
-        // is because onCleared() is a synchronous, blocking function, and Kotlin does not allow suspending
-        // functions or coroutine scopes directly in onCleared().
-        runBlocking(Dispatchers.IO) {
-            recorder.release()
-        }
-        super.onCleared()
     }
 }
