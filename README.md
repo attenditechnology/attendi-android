@@ -88,7 +88,7 @@ A suspendable interface for recording audio using Android’s AudioRecord API. I
 
 Example Usage
 ```kotlin
-let recorder = AttendiRecorderFactory.create()
+val recorder = AttendiRecorderFactory.create()
 
 private fun onButtonPressed() {
     viewModelScope.launch {
@@ -99,7 +99,21 @@ private fun onButtonPressed() {
         }
     }
 }
+
+private fun releaseRecorder() {
+    viewModelScope.launch {
+        recorder.release()
+    }
+}
 ```
+
+#### Recorder Resource Ownership and Cleanup
+
+Recorder instances and their associated plugins should be released by the same ViewModel that creates and owns them. In the examples, recorder cleanup is performed from the screen ViewModel's onCleared() callback to ensure resources are released when the screen is removed and the ViewModel is destroyed. This approach is used for simplicity in the sample implementation.
+
+If you need to release the recorders resources before the ViewModel is destroyed (for example, navigating away from the screen) check `TwoMicrophonesStreamingScreenViewModel`. The recorder release is embed into the ViewModel's lifecycle.
+
+Check `RecorderStreamingScreenView` to see how a recorder **without** the `AttendiMicrophone` component can be used.
 
 ### AttendiMicrophone
 A Jetpack Composable designed for audio capture using a visual microphone button. It integrates with an `AttendiRecorder` instance and supports plugin-driven behavior, visual feedback, and customization of appearance and interaction.

@@ -13,6 +13,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +24,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophone
 import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophoneDefaults
 import nl.attendi.attendispeechservice.components.attendimicrophone.microphone.AttendiMicrophoneSettings
@@ -49,6 +53,15 @@ fun OneMicrophoneSyncScreenView(modifier: Modifier = Modifier) {
     var isErrorAlertShown by remember { mutableStateOf(false) }
 
     val recorder = remember { AttendiRecorderFactory.create() }
+
+    // Releasing recorder resources in the background
+    DisposableEffect(Unit) {
+        onDispose {
+            CoroutineScope(Dispatchers.IO).launch {
+                recorder.release()
+            }
+        }
+    }
 
     // Run once on first composition.
     LaunchedEffect(Unit) {
