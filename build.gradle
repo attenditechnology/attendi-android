@@ -47,4 +47,14 @@ plugins {
     id 'org.jetbrains.kotlin.android' version '2.0.10' apply false
     id 'org.jetbrains.kotlin.plugin.compose' version "2.0.10" apply false
     id 'org.jetbrains.kotlin.plugin.serialization' version '2.0.10' apply false
+    id 'com.gradleup.nmcp' version '1.6.1'
+}
+
+nmcp {
+    publishAggregation {
+        project(':attendispeechservice')
+        username = findProperty('mavenCentralUsername') ?: ''
+        password = findProperty('mavenCentralPassword') ?: ''
+        publishingType = 'USER_MANAGED'
+    }
 }
