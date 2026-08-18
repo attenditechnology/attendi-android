@@ -47,14 +47,17 @@ plugins {
     id 'org.jetbrains.kotlin.android' version '2.0.10' apply false
     id 'org.jetbrains.kotlin.plugin.compose' version "2.0.10" apply false
     id 'org.jetbrains.kotlin.plugin.serialization' version '2.0.10' apply false
-    id 'com.gradleup.nmcp' version '1.6.1'
+    id 'com.gradleup.nmcp.aggregation' version '1.6.1'
 }
 
-nmcp {
-    publishAggregation {
-        project(':attendispeechservice')
+nmcpAggregation {
+    centralPortal {
         username = property('mavenCentralUsername')
         password = property('mavenCentralPassword')
         publishingType = 'USER_MANAGED'
     }
+}
+
+dependencies {
+    nmcpAggregation project(':attendispeechservice')
 }
