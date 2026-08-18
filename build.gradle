@@ -52,8 +52,8 @@ plugins {
 
 nmcpAggregation {
     centralPortal {
-        username = property('mavenCentralUsername')
-        password = property('mavenCentralPassword')
+        username = findProperty('mavenCentralUsername') ?: ''
+        password = findProperty('mavenCentralPassword') ?: ''
         publishingType = 'USER_MANAGED'
     }
 }
