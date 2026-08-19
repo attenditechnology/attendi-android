@@ -128,6 +128,7 @@ afterEvaluate {
     }
 
     signing {
+        required { gradle.taskGraph.hasTask("publishAggregationToCentralPortal") }
         useInMemoryPgpKeys(
             findProperty('signingKey'),
             findProperty('signingPassword')
