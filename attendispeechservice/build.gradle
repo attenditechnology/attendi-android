@@ -101,7 +101,7 @@ afterEvaluate {
                     developers {
                         developer {
                             name = 'Attendi Technology'
-                            email = 'omar@attendi.nl'
+                            email = 'info@attendi.nl'
                             organization = 'Attendi Technology B.V.'
                             organizationUrl = 'https://attendi.nl'
                         }
