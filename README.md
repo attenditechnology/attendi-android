@@ -6,66 +6,63 @@ The SDK is designed with extensibility in mind, supporting plugins to customize 
 
 ## Getting started
 
-The SDK is available as a Kotlin Android library package.
+The SDK is available on Maven Central.
 
-### Installation instructions
+### Installation
 
-The package is not hosted on a public Maven repository yet, so you will need to authenticate with Attendi's private GitHub Packages repository.
-First, create a personal access token with the `read:packages` scope. [This link](https://github.com/settings/tokens/new) should take you to the right page.
-Then, add the following to your project's `settings.gradle` file:
+Make sure `mavenCentral()` is present in your project's `settings.gradle` (it is included by default in new Android projects):
 
-```
-// This block should already exist
+```kotlin
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
-        // Add this part
-        maven(
-            "https://maven.pkg.github.com/attenditechnology/attendi-android") {
-            credentials {
-                // Your GitHub username
-                username = ""
-                // Use the personal access token you created earlier as the password
-                password = ""
-            }
-        }
     }
 }
 ```
 
-You can install the package by either downloading it directly from the package page on GitHub Packages, by updating your app's build.gradle file:
+Then add the dependency to your module's `build.gradle`:
 
 ```kotlin
-implementation "nl.attendi:attendispeechservice:<version>"
+implementation("nl.attendi:attendispeechservice:<version>")
 ```
 
-or you can update the `pom.xml` file by adding the following repository and dependency:
+Or if you are using `libs.versions.toml`:
 
-```
-<repository>
-  <id>github</id>
-  <name>GitHub Attendi Technology Apache Maven Packages</name>
-  <url>https://maven.pkg.github.com/attenditechnology/attendi-android</url>
-</repository>
-
-<dependency>
-  <groupId>nl.attendi</groupId>
-  <artifactId>attendispeechservice</artifactId>
-  <version>[VERSION]</version>
-</dependency>
-```
-
-or if you are using libs.versions.toml:
+```toml
 [versions]
-attendiSpeechService = "[VERSION]"
+attendiSpeechService = "<version>"
 
 [libraries]
 attendi-speechservice = { group = "nl.attendi", name = "attendispeechservice", version.ref = "attendiSpeechService" }
+```
 
-and in your module.gradle file:
+```kotlin
+// module build.gradle
 implementation(libs.attendi.speechservice)
+```
+
+### Migrating from GitHub Packages
+
+The SDK was previously distributed via Attendi's private GitHub Packages repository. It is now published to Maven Central and no authentication is required.
+
+To migrate:
+
+1. Remove the private GitHub Packages `maven { ... }` block from your `settings.gradle`:
+
+```kotlin
+// Remove this entire block
+maven("https://maven.pkg.github.com/attenditechnology/attendi-android") {
+    credentials {
+        username = ""
+        password = ""
+    }
+}
+```
+
+2. Ensure `mavenCentral()` is present in the same `repositories` block (it likely already is).
+3. You can also revoke or delete the GitHub personal access token you created for package access — it is no longer needed.
 
 ## Usage
 
@@ -235,6 +232,18 @@ Implementation: AttendiAsyncTranscribeServiceImpl handles the streaming protocol
 Defines the contract for authenticating with Attendi’s backend. Implementations are responsible for retrieving and refreshing valid access tokens to authorize requests.
 
 ## Development
+
+### Testing the SDK locally against a consumer app
+
+To test an unpublished SDK build against a consumer app before releasing, publish to your local Maven repository:
+
+```bash
+./gradlew publishToMavenLocal
+```
+
+Then add `mavenLocal()` as the first entry in the consumer app's `settings.gradle` (or `settings.gradle.kts`) `repositories` block, and point the app's dependency at the version you just built. Remember to remove `mavenLocal()` from the consumer app once you're done testing.
+
+### Project structure
 
 The project structure is organized as follows:
 
