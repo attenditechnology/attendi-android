@@ -51,6 +51,14 @@ jobs:
         run: |
           sed -i "s/project_version = \"${{ steps.version.outputs.current }}\"/project_version = \"${{ steps.version.outputs.new }}\"/" build.gradle
 
+      - name: Publish to Maven Central
+        run: ./gradlew publishAggregationToCentralPortal
+        env:
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+
       - name: Commit and tag
         run: |
           git config user.name "github-actions[bot]"
@@ -60,14 +68,6 @@ jobs:
           git tag "v${{ steps.version.outputs.new }}"
           git push origin main
           git push origin "v${{ steps.version.outputs.new }}"
-
-      - name: Publish to Maven Central
-        run: ./gradlew publishAggregationToCentralPortal
-        env:
-          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_PRIVATE_KEY }}
-          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
       - name: Create GitHub Release
         run: |
