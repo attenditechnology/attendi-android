@@ -11,6 +11,15 @@ on:
           - patch
           - minor
           - major
+      gradle_flags:
+        description: 'Additional Gradle flags (for debugging)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - --info
+          - --stacktrace
+          - --debug
 
 jobs:
   release:
@@ -52,7 +61,7 @@ jobs:
           sed -i "s/project_version = \"${{ steps.version.outputs.current }}\"/project_version = \"${{ steps.version.outputs.new }}\"/" build.gradle
 
       - name: Publish to Maven Central
-        run: ./gradlew publishAggregationToCentralPortal
+        run: ./gradlew publishAggregationToCentralPortal ${{ inputs.gradle_flags }}
         env:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_PRIVATE_KEY }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
