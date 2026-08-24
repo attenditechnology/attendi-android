@@ -4,6 +4,8 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
     id 'org.jetbrains.kotlin.plugin.serialization'
     id 'maven-publish'
+    id 'signing'
+    id 'com.gradleup.nmcp'
 }
 
 android {
@@ -75,27 +77,52 @@ dependencies {
 }
 
 afterEvaluate {
-        publishing {
-            publications {
-                release(MavenPublication) {
-                    groupId = 'nl.attendi'
-                    artifactId = 'attendispeechservice'
-                    version = project_version
+    publishing {
+        publications {
+            release(MavenPublication) {
+                groupId = 'nl.attendi'
+                artifactId = 'attendispeechservice'
+                version = project_version
 
-                    from components.release
-                }
-            }
-        repositories {
-            maven {
-                name = "GitHubPackages"
+                from components.release
 
-                url = uri("https://maven.pkg.github.com/attenditechnology/attendi-android")
+                pom {
+                    name = 'Attendi Speech Service'
+                    description = 'Android SDK for the Attendi speech-to-text service'
+                    url = 'https://github.com/attenditechnology/attendi-android'
 
-                credentials {
-                    username = System.getenv("USERNAME_GITHUB")
-                    password = System.getenv("TOKEN_GITHUB")
+                    licenses {
+                        license {
+                            name = 'The Apache Software License, Version 2.0'
+                            url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            name = 'Attendi Technology'
+                            email = 'info@attendi.nl'
+                            organization = 'Attendi Technology B.V.'
+                            organizationUrl = 'https://attendi.nl'
+                        }
+                    }
+
+                    scm {
+                        connection = 'scm:git:git://github.com/attenditechnology/attendi-android.git'
+                        developerConnection = 'scm:git:ssh://github.com/attenditechnology/attendi-android.git'
+                        url = 'https://github.com/attenditechnology/attendi-android'
+                    }
                 }
             }
         }
+    }
+
+    signing {
+        required { gradle.taskGraph.hasTask("publishAggregationToCentralPortal") }
+        useInMemoryPgpKeys(
+            findProperty('signingKey'),
+            findProperty('signingPassword')
+        )
+        sign publishing.publications
     }
 }
